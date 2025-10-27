@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:inventivo/screens/modulos/insumos/historial_uso_insumos_page.dart';
+import 'package:inventivo/screens/modulos/insumos/registrar_uso_insumo.dart' show RegistrarUsoInsumoPage;
 import 'package:inventivo/screens/widgets/logout.dart';
 import 'package:inventivo/screens/modulos/personal/listar_personal.dart';
 import 'package:inventivo/screens/modulos/insumos/registrar_insumo.dart';
@@ -75,7 +77,30 @@ class AdminDashboard extends StatelessWidget {
                 );
               },
             ),
-
+            ElevatedButton.icon(
+              icon: const Icon(Icons.people),
+              label: const Text("Registrar Actividad Agricola"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RegistrarUsoInsumoPage(),
+                  ),
+                );
+              },
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.people),
+              label: const Text("Lista Actividad Agricola"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistorialUsoInsumosPage(),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
