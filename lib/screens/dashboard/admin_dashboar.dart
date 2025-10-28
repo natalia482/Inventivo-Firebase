@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventivo/screens/modulos/plantas/plantas_page.dart';
 import 'package:inventivo/screens/widgets/logout.dart';
 import 'package:inventivo/screens/modulos/personal/listar_personal.dart';
 import 'package:inventivo/screens/modulos/insumos/registrar_insumo.dart';
@@ -72,18 +71,6 @@ class AdminDashboard extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => RegistroInsumoScreen(),
-                  ),
-                );
-              },
-            ),
-             ElevatedButton.icon(
-              icon: const Icon(Icons.people),
-              label: const Text("Plantas"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PlantasPage(),
                   ),
                 );
               },
