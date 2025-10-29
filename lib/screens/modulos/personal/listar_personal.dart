@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:inventivo/core/constants/api_config.dart';
+import 'package:inventivo/core/utils/session_manager.dart';
 
 class ListaTrabajadores extends StatefulWidget {
   final int idEmpresa;
@@ -15,6 +16,7 @@ class ListaTrabajadores extends StatefulWidget {
 class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   List trabajadores = [];
   bool isLoading = true;
+  final SessionManager _session = SessionManager();
 
   @override
   void initState() {
@@ -36,20 +38,12 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
             trabajadores = data['data'] ?? [];
             isLoading = false;
           });
-        } else if (data is List) {
-          setState(() {
-            trabajadores = data;
-            isLoading = false;
-          });
         } else {
           setState(() {
             trabajadores = [];
             isLoading = false;
           });
-          debugPrint("Estructura JSON no esperada: $data");
         }
-      } else {
-        throw Exception("Error al obtener trabajadores (${response.statusCode})");
       }
     } catch (e) {
       debugPrint("Error al obtener trabajadores: $e");
@@ -59,41 +53,24 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
 
   Future<void> cambiarEstado(int id, String estadoActual) async {
     final nuevoEstado = estadoActual == "ACTIVO" ? "INACTIVO" : "ACTIVO";
-
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.cambiarEstado),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "id": id.toString(),
-          "estado": nuevoEstado,
-        }),
+        body: jsonEncode({"id": id, "estado": nuevoEstado}),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data["success"] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Estado cambiado a $nuevoEstado")),
           );
           obtenerTrabajadores();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("❌ ${data["message"] ?? "No se pudo cambiar el estado."}")),
-          );
         }
-      } else {
-        debugPrint("Error HTTP ${response.statusCode}: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error en la conexión con el servidor.")),
-        );
       }
     } catch (e) {
       debugPrint("Error al cambiar estado: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error al cambiar estado.")),
-      );
     }
   }
 
@@ -140,10 +117,234 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
     );
   }
 
+  /// 🔹 Popup para registrar trabajador
+  void mostrarPopupRegistro() {
+    final _formKey = GlobalKey<FormState>();
+    final _nombre = TextEditingController();
+    final _apellido = TextEditingController();
+    final _correo = TextEditingController();
+    final _password = TextEditingController();
+    final _confirmarPassword = TextEditingController();
+    bool cargando = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text("Registrar Trabajador"),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: _nombre,
+                      decoration: const InputDecoration(labelText: "Nombre"),
+                      validator: (v) => v!.isEmpty ? "Ingrese el nombre" : null,
+                    ),
+                    TextFormField(
+                      controller: _apellido,
+                      decoration: const InputDecoration(labelText: "Apellido"),
+                      validator: (v) => v!.isEmpty ? "Ingrese el apellido" : null,
+                    ),
+                    TextFormField(
+                      controller: _correo,
+                      decoration: const InputDecoration(labelText: "Correo"),
+                      validator: (v) =>
+                          v!.isEmpty || !v.contains('@') ? "Correo inválido" : null,
+                    ),
+                    TextFormField(
+                      controller: _password,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: "Contraseña"),
+                      validator: (v) =>
+                          v!.length < 6 ? "Debe tener al menos 6 caracteres" : null,
+                    ),
+                    TextFormField(
+                      controller: _confirmarPassword,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: "Confirmar contraseña"),
+                      validator: (v) =>
+                          v != _password.text ? "Las contraseñas no coinciden" : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar"),
+              ),
+              ElevatedButton(
+                onPressed: cargando
+                    ? null
+                    : () async {
+                        if (!_formKey.currentState!.validate()) return;
+
+                        setStateDialog(() => cargando = true);
+
+                        final user = await _session.getUser();
+                        final idEmpresa = user?['id_empresa'] ?? widget.idEmpresa;
+
+                        final response = await http.post(
+                          Uri.parse(ApiConfig.registroTrabajador),
+                          headers: {"Content-Type": "application/json"},
+                          body: jsonEncode({
+                            "nombre": _nombre.text,
+                            "apellido": _apellido.text,
+                            "correo": _correo.text,
+                            "password": _password.text,
+                            "id_empresa": idEmpresa.toString(),
+                          }),
+                        );
+
+                        final data = jsonDecode(response.body);
+                        setStateDialog(() => cargando = false);
+
+                        if (data["success"] == true) {
+                          Navigator.pop(context);
+                          obtenerTrabajadores();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("✅ ${data["message"]}")),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("❌ ${data["message"] ?? "Error"}")),
+                          );
+                        }
+                      },
+                child: cargando
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text("Registrar"),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  /// 🔹 Popup para editar trabajador
+  void mostrarPopupEditar(Map trabajador) {
+    final _formKey = GlobalKey<FormState>();
+    final _nombre = TextEditingController(text: trabajador["nombre"]);
+    final _apellido = TextEditingController(text: trabajador["apellido"]);
+    final _correo = TextEditingController(text: trabajador["correo"]);
+    bool cargando = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text("Editar Trabajador"),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nombre,
+                      decoration: const InputDecoration(labelText: "Nombre"),
+                      validator: (v) => v!.isEmpty ? "Ingrese el nombre" : null,
+                    ),
+                    TextFormField(
+                      controller: _apellido,
+                      decoration: const InputDecoration(labelText: "Apellido"),
+                      validator: (v) => v!.isEmpty ? "Ingrese el apellido" : null,
+                    ),
+                    TextFormField(
+                      controller: _correo,
+                      decoration: const InputDecoration(labelText: "Correo"),
+                      validator: (v) =>
+                          v!.isEmpty || !v.contains('@') ? "Correo inválido" : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar"),
+              ),
+              ElevatedButton(
+                onPressed: cargando
+                    ? null
+                    : () async {
+                        if (!_formKey.currentState!.validate()) return;
+                        setStateDialog(() => cargando = true);
+
+                        final response = await http.post(
+                          Uri.parse("${ApiConfig.baseUrl}/usuarios/trabajador/editar_trabajador.php"),
+                          headers: {"Content-Type": "application/json"},
+                          body: jsonEncode({
+                            "id": trabajador["id"],
+                            "nombre": _nombre.text,
+                            "apellido": _apellido.text,
+                            "correo": _correo.text,
+                          }),
+                        );
+
+                        final data = jsonDecode(response.body);
+                        setStateDialog(() => cargando = false);
+
+                        if (data["success"] == true) {
+                          Navigator.pop(context);
+                          obtenerTrabajadores();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("✅ ${data["message"]}")),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("❌ ${data["message"] ?? "Error al editar"}")),
+                          );
+                        }
+                      },
+                child: cargando
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text("Guardar"),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Lista de Trabajadores")),
+      appBar: AppBar(
+        title: const Text("Gestión de Trabajadores"),
+        backgroundColor: Colors.white,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: TextButton.icon(
+              icon: const Icon(Icons.add, color: Color.fromARGB(255, 48, 105, 58)),
+              label: const Text(
+                "Agregar Trabajador ",
+                style: TextStyle(
+                    color: Color.fromARGB(255, 62, 153, 89),
+                    fontWeight: FontWeight.bold),
+              ),
+              onPressed: () => mostrarPopupRegistro(),
+            ),
+          ),
+        ],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : trabajadores.isEmpty
@@ -160,8 +361,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                         leading: CircleAvatar(
                           backgroundColor:
                               estado == "ACTIVO" ? Colors.green : Colors.red,
-                          child: Icon(Icons.person,
-                              color: Colors.white),
+                          child: const Icon(Icons.person, color: Colors.white),
                         ),
                         title: Text("${trabajador["nombre"]} ${trabajador["apellido"]}"),
                         subtitle: Column(
@@ -182,6 +382,10 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => mostrarPopupEditar(trabajador),
+                            ),
+                            IconButton(
                               icon: Icon(
                                 estado == "ACTIVO"
                                     ? Icons.toggle_on
@@ -191,7 +395,8 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                                     : Colors.red,
                                 size: 36,
                               ),
-                              onPressed: () => cambiarEstado(trabajador["id"], estado),
+                              onPressed: () =>
+                                  cambiarEstado(trabajador["id"], estado),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),

@@ -4,15 +4,29 @@ import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 
-class ListarInsumosPage extends StatefulWidget {
+class InsumosPage extends StatefulWidget {
+  const InsumosPage({super.key});
+
   @override
-  _ListarInsumosPageState createState() => _ListarInsumosPageState();
+  State<InsumosPage> createState() => _InsumosPageState();
 }
 
-class _ListarInsumosPageState extends State<ListarInsumosPage> {
+class _InsumosPageState extends State<InsumosPage> {
   List<dynamic> insumos = [];
   bool isLoading = true;
   int? idEmpresa;
+
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController nombreController = TextEditingController();
+  final TextEditingController categoriaOtroController = TextEditingController();
+  final TextEditingController precioController = TextEditingController();
+  final TextEditingController cantidadController = TextEditingController();
+
+  String? categoriaSeleccionada;
+  String? medidaSeleccionada;
+
+  final List<String> medidas = ["KG", "LB", "LITRO", "MILILITRO"];
+  final List<String> categorias = ["Fertilizante", "Abono", "Matamaleza", "Otro"];
 
   @override
   void initState() {
@@ -24,27 +38,19 @@ class _ListarInsumosPageState extends State<ListarInsumosPage> {
     final session = SessionManager();
     final user = await session.getUser();
 
-    print("🟢 Datos de sesión: $user");
-
     if (user != null && user["id_empresa"] != null) {
       idEmpresa = user["id_empresa"];
-      print("🏢 ID de empresa obtenido: $idEmpresa");
       await listarInsumos();
     } else {
-      print("⚠️ No se encontró el ID de empresa en la sesión");
       setState(() => isLoading = false);
     }
   }
 
   Future<void> listarInsumos() async {
     if (idEmpresa == null) return;
-
     final url = Uri.parse("${ApiConfig.listarInsumos}?id_empresa=$idEmpresa");
-    print("📡 Solicitando a la API: $url");
 
     final response = await http.get(url);
-    print("📥 Respuesta (${response.statusCode}): ${response.body}");
-
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data["success"]) {
@@ -56,74 +62,215 @@ class _ListarInsumosPageState extends State<ListarInsumosPage> {
     }
   }
 
-  Future<void> _editarInsumo(dynamic insumo) async {
-    final nombreCtrl = TextEditingController(text: insumo["nombre_insumo"]);
-    final categoriaCtrl = TextEditingController(text: insumo["categoria"]);
-    final medidaCtrl = TextEditingController(text: insumo["medida"]);
-    final precioCtrl = TextEditingController(text: insumo["precio"].toString());
-    final cantidadCtrl = TextEditingController(text: insumo["cantidad"].toString());
+  // 🔹 Mostrar popup para registrar insumo
+  void _mostrarPopupRegistro() {
+    categoriaSeleccionada = null;
+    medidaSeleccionada = null;
+    categoriaOtroController.clear();
 
-    await showDialog(
+    showDialog(
       context: context,
       builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: const Text("Registrar Insumo", style: TextStyle(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nombreController,
+                        decoration: const InputDecoration(labelText: "Nombre del insumo"),
+                        validator: (value) => value!.isEmpty ? "Ingrese el nombre" : null,
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: categoriaSeleccionada,
+                        decoration: const InputDecoration(labelText: "Categoría"),
+                        items: categorias
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                            .toList(),
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            categoriaSeleccionada = value;
+                          });
+                        },
+                        validator: (value) => value == null ? "Seleccione una categoría" : null,
+                      ),
+                      if (categoriaSeleccionada == "Otro")
+                        TextFormField(
+                          controller: categoriaOtroController,
+                          decoration: const InputDecoration(labelText: "Especifique otra categoría"),
+                          validator: (value) => categoriaSeleccionada == "Otro" && value!.isEmpty
+                              ? "Ingrese la categoría"
+                              : null,
+                        ),
+                      DropdownButtonFormField<String>(
+                        value: medidaSeleccionada,
+                        decoration: const InputDecoration(labelText: "Medida"),
+                        items: medidas
+                            .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                            .toList(),
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            medidaSeleccionada = value;
+                          });
+                        },
+                        validator: (value) => value == null ? "Seleccione una medida" : null,
+                      ),
+                      TextFormField(
+                        controller: cantidadController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: "Cantidad del insumo"),
+                        validator: (value) => value!.isEmpty ? "Ingrese la cantidad" : null,
+                      ),
+                      TextFormField(
+                        controller: precioController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: "Precio"),
+                        validator: (value) => value!.isEmpty ? "Ingrese el precio" : null,
+                      ),
+               
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  onPressed: registrarInsumo,
+                  child: const Text("Guardar"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> registrarInsumo() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (idEmpresa == null) return;
+
+    final categoriaFinal = categoriaSeleccionada == "Otro"
+        ? categoriaOtroController.text.trim()
+        : categoriaSeleccionada;
+
+    final response = await http.post(
+      Uri.parse(ApiConfig.registrarInsumo),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "nombre_insumo": nombreController.text.trim(),
+        "categoria": categoriaFinal,
+        "precio": double.tryParse(precioController.text.trim()) ?? 0,
+        "medida": medidaSeleccionada,
+        "cantidad": int.tryParse(cantidadController.text.trim()) ?? 0,
+        "id_empresa": idEmpresa,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data["success"] == true) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Insumo registrado correctamente.")),
+      );
+      nombreController.clear();
+      precioController.clear();
+      cantidadController.clear();
+      listarInsumos();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data["message"] ?? "Error al registrar el insumo")),
+      );
+    }
+  }
+
+  // 🔹 Popup para editar insumo
+  Future<void> _editarInsumo(dynamic insumo) async {
+  String? medidaEdit = insumo["medida"];
+  String? categoriaEdit =
+      categorias.contains(insumo["categoria"]) ? insumo["categoria"] : "Otro";
+
+  final nombreCtrl = TextEditingController(text: insumo["nombre_insumo"]);
+  final categoriaOtroCtrl =
+      TextEditingController(text: categoriaEdit == "Otro" ? insumo["categoria"] : "");
+  final precioCtrl = TextEditingController(text: insumo["precio"].toString());
+  final cantidadCtrl = TextEditingController(text: insumo["cantidad"].toString());
+
+  await showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setStateDialog) {
         return AlertDialog(
           title: const Text("Editar Insumo"),
           content: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: nombreCtrl,
-                  decoration: const InputDecoration(labelText: "Nombre del insumo"),
-                ),
-                TextField(
-                  controller: categoriaCtrl,
+                    controller: nombreCtrl,
+                    decoration: const InputDecoration(labelText: "Nombre")),
+                DropdownButtonFormField<String>(
+                  value: categoriaEdit,
                   decoration: const InputDecoration(labelText: "Categoría"),
+                  items: categorias
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (value) {
+                    setStateDialog(() {
+                      categoriaEdit = value;
+                    });
+                  },
                 ),
-                TextField(
-                  controller: medidaCtrl,
+                if (categoriaEdit == "Otro")
+                  TextField(
+                    controller: categoriaOtroCtrl,
+                    decoration:
+                        const InputDecoration(labelText: "Especifique otra categoría"),
+                  ),
+                DropdownButtonFormField<String>(
+                  value: medidaEdit,
                   decoration: const InputDecoration(labelText: "Medida"),
+                  items: medidas
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                      .toList(),
+                  onChanged: (value) {
+                    setStateDialog(() {
+                      medidaEdit = value;
+                    });
+                  },
                 ),
                 TextField(
-                  controller: precioCtrl,
-                  decoration: const InputDecoration(labelText: "Precio"),
-                  keyboardType: TextInputType.number,
-                ),
+                    controller: cantidadCtrl,
+                    decoration: const InputDecoration(labelText: "Cantidad")),
                 TextField(
-                  controller: cantidadCtrl,
-                  decoration: const InputDecoration(labelText: "Cantidad"),
-                  keyboardType: TextInputType.number,
-                ),
+                    controller: precioCtrl,
+                    decoration: const InputDecoration(labelText: "Precio")),
+                
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancelar"),
-            ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text("Guardar"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-              ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               onPressed: () async {
-                // Validación básica
-                if (nombreCtrl.text.isEmpty || categoriaCtrl.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Por favor completa todos los campos.")),
-                  );
-                  return;
-                }
+                final categoriaFinal = categoriaEdit == "Otro"
+                    ? categoriaOtroCtrl.text.trim()
+                    : categoriaEdit;
 
                 final response = await http.post(
                   Uri.parse(ApiConfig.editarInsumo),
                   body: {
                     "id": insumo["id"].toString(),
                     "nombre_insumo": nombreCtrl.text,
-                    "categoria": categoriaCtrl.text,
-                    "medida": medidaCtrl.text,
+                    "categoria": categoriaFinal,
+                    "medida": medidaEdit,
                     "precio": precioCtrl.text,
                     "cantidad": cantidadCtrl.text,
                   },
@@ -133,26 +280,35 @@ class _ListarInsumosPageState extends State<ListarInsumosPage> {
                 if (data["success"] == true) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("✅ Insumo actualizado correctamente.")),
+                    const SnackBar(content: Text("✅ Insumo actualizado.")),
                   );
-                  await listarInsumos(); // 🔄 Recarga la lista
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(data["message"] ?? "Error al actualizar el insumo.")),
-                  );
+                  listarInsumos();
                 }
               },
+              child: const Text("Guardar"),
             ),
           ],
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
+    // Tu cuerpo original sin cambios
     return Scaffold(
-      appBar: AppBar(title: const Text("Lista de Insumos")),
+      appBar: AppBar(
+        title: const Text("Insumos"),
+        backgroundColor: Colors.green,
+        actions: [
+          TextButton.icon(
+            onPressed: _mostrarPopupRegistro,
+            icon: const Icon(Icons.add_circle, color: Colors.white),
+            label: const Text("Registrar insumo", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : insumos.isEmpty
@@ -165,28 +321,17 @@ class _ListarInsumosPageState extends State<ListarInsumosPage> {
                       final insumo = insumos[index];
                       return Card(
                         elevation: 3,
-                        shadowColor: Colors.green.shade100,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 6, horizontal: 10),
+                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          title: Text(
-                            insumo["nombre_insumo"],
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
+                          title: Text(insumo["nombre_insumo"], style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
                             "Categoría: ${insumo["categoria"]}\n"
                             "Medida: ${insumo["medida"]} | Cantidad: ${insumo["cantidad"]} | Precio: ${insumo["precio"]}",
-                            style: const TextStyle(height: 1.4, fontSize: 14),
+                            style: const TextStyle(height: 1.4),
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.edit,
-                                color: Color.fromARGB(255, 14, 106, 182), size: 28),
-                            tooltip: "Editar insumo",
+                            icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () => _editarInsumo(insumo),
                           ),
                         ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventivo/screens/auth/registro_trabajador.dart';
 import 'package:inventivo/screens/auth/splash_screen.dart';
 import 'package:inventivo/screens/auth/login_screen.dart';
 import 'package:inventivo/screens/auth/registro_admin.dart';
@@ -24,7 +23,6 @@ class InventivoApp extends StatelessWidget {
         '/login': (_) => const LoginScreen(),
         '/registro_admin': (_) => RegistroAdminScreen(),
         '/dashboard_trabajador': (_) => const TrabajadorDashboard(),
-        '/registro': (_) => const RegistroTrabajadorScreen(),
       },
     );
   }

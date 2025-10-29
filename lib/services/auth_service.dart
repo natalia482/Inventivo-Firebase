@@ -4,6 +4,8 @@ import 'package:inventivo/services/api_services.dart';
 class AuthService {
   final ApiService _apiService = ApiService();
 
+
+//Registro administrador
   Future<Map<String, dynamic>> registrarAdmin({
     required String nombre,
     required String apellido,
@@ -19,29 +21,6 @@ class AuthService {
     };
 
     return await _apiService.postData(ApiConfig.registroAdmin, data);
-  }
-
-  //Login
-  Future<Map<String, dynamic>> login({
-    required String correo,
-    required String password,
-  }) async {
-    final data = {"correo": correo, "password": password};
-    final response = await _apiService.postData(ApiConfig.login, data);
-
-    // Validar y devolver formato uniforme
-    if (response['success'] == true && response['data'] != null) {
-      return {
-        'success': true,
-        'message': response['message'],
-        'usuario': response['data'], // 🔹 Reetiquetamos aquí
-      };
-    } else {
-      return {
-        'success': false,
-        'message': response['message'] ?? 'Error desconocido',
-      };
-    }
   }
 
   //Registro trabajador
@@ -64,4 +43,28 @@ class AuthService {
 
     return await _apiService.postData(ApiConfig.registroTrabajador, data);
   }
+  //Login por roles
+  Future<Map<String, dynamic>> login({
+    required String correo,
+    required String password,
+  }) async {
+    final data = {"correo": correo, "password": password};
+    final response = await _apiService.postData(ApiConfig.login, data);
+
+    // Validar y devolver formato uniforme
+    if (response['success'] == true && response['data'] != null) {
+      return {
+        'success': true,
+        'message': response['message'],
+        'usuario': response['data'], // 🔹 Reetiquetamos aquí
+      };
+    } else {
+      return {
+        'success': false,
+        'message': response['message'] ?? 'Error desconocido',
+      };
+    }
+  }
+
+  
 }
