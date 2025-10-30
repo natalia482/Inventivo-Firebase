@@ -23,17 +23,25 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
 
   Future<void> cargarActividades() async {
     setState(() => isLoading = true);
-    final response = await http.get(Uri.parse(ApiConfig.listarUsoInsumos));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success']) {
-        setState(() {
-          actividades = data['data'];
-          isLoading = false;
-        });
+    try {
+      final response = await http.get(Uri.parse(ApiConfig.listarUsoInsumos));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            actividades = data['data'];
+            isLoading = false;
+          });
+        } else {
+          setState(() => isLoading = false);
+        }
+      } else {
+        setState(() => isLoading = false);
       }
-    } else {
+    } catch (e) {
+      debugPrint("Error al cargar actividades: $e");
       setState(() => isLoading = false);
     }
   }
@@ -56,19 +64,20 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
           : actividades.isEmpty
               ? const Center(child: Text("No hay actividades registradas."))
               : ListView.builder(
-                  itemCount: actividades.length,
-                  itemBuilder: (context, index) {
-                    final a = actividades[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      child: ListTile(
-                        title: Text(a['nombre_insumo'] ?? 'Insumo'),
-                        subtitle: Text(
-                            "📅 ${a['fecha']}\n💧 ${a['cantidad_utilizada']} ${a['dosificacion']}\n🎯 ${a['objetivo']}\n👤 ${a['responsable']}"),
+                itemCount: actividades.length,
+                itemBuilder: (context, index) {
+                  final a = actividades[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: ListTile(
+                      title: Text(a['nombre_insumo'] ?? 'Insumo'),
+                      subtitle: Text(
+                        "📅 ${a['fecha']}\n💧 ${a['cantidad_utilizada']} ${a['dosificacion']}\n🎯 ${a['objetivo']}\n👤 ${a['responsable']}",
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
+              ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: mostrarPopupRegistro,
         icon: const Icon(Icons.add),
@@ -92,6 +101,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
   final TextEditingController _dosificacionCtrl = TextEditingController();
   final TextEditingController _responsableCtrl = TextEditingController();
   final TextEditingController _otroObjetivoCtrl = TextEditingController();
+  final TextEditingController _medidaCtrl = TextEditingController();
 
   bool isLoading = false;
   bool mostrarOtroObjetivo = false;
@@ -107,12 +117,38 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
   }
 
   Future<void> cargarInsumos() async {
-    final response = await http.get(Uri.parse(ApiConfig.listarInsumos));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success']) {
-        setState(() => insumos = data['data']);
+    try {
+      final session = SessionManager();
+      final user = await session.getUser();
+      final idEmpresa = user?['id_empresa'];
+
+      debugPrint("🧾 Cargando insumos para empresa: $idEmpresa");
+
+      if (idEmpresa == null || idEmpresa.toString().isEmpty) {
+        debugPrint("⚠️ No se encontró id_empresa en sesión");
+        return;
       }
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.listarInsumos),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"id_empresa": int.parse(idEmpresa.toString())}),
+      );
+
+      debugPrint("📦 Respuesta listarInsumos: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() => insumos = data['data']);
+        } else {
+          debugPrint("Error backend: ${data['message']}");
+        }
+      } else {
+        debugPrint("Error HTTP: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Excepción cargarInsumos: $e");
     }
   }
 
@@ -126,38 +162,56 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
 
     setState(() => isLoading = true);
 
-    final session = SessionManager();
-    final user = await session.getUser();
-    final idEmpresa = user?['id_empresa'] ?? '';
+    try {
+      final session = SessionManager();
+      final user = await session.getUser();
 
-    final insumo = insumos.firstWhere((i) => i['nombre_insumo'] == selectedInsumo);
-    final idInsumo = insumo['id'];
+      final idEmpresa = user?['id_empresa'];
+      debugPrint("🧠 Datos del usuario: $user");
 
-    final response = await http.post(
-      Uri.parse(ApiConfig.registrarUsoInsumo),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "id_insumo": idInsumo,
-        "cantidad_utilizada": _cantidadCtrl.text,
-        "dosificacion": _dosificacionCtrl.text,
-        "objetivo": objetivo == "Otro" ? _otroObjetivoCtrl.text : objetivo,
-        "responsable": _responsableCtrl.text,
-        "id_empresa": idEmpresa
-      }),
-    );
+      if (idEmpresa == null || idEmpresa.toString().isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("Error: Falta el ID de la empresa.")));
+        setState(() => isLoading = false);
+        return;
+      }
 
-    final data = jsonDecode(response.body);
-    setState(() => isLoading = false);
+      final insumo = insumos.firstWhere((i) => i['nombre_insumo'] == selectedInsumo);
+      final idInsumo = insumo['id'];
 
-    if (data['success']) {
-      Navigator.pop(context);
-      widget.onRegistrada();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Actividad registrada correctamente")),
+      final response = await http.post(
+        Uri.parse(ApiConfig.registrarUsoInsumo),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "id_insumo": idInsumo,
+          "cantidad_utilizada": _cantidadCtrl.text,
+          "dosificacion": _dosificacionCtrl.text,
+          "objetivo": objetivo == "Otro" ? _otroObjetivoCtrl.text : objetivo,
+          "responsable": _responsableCtrl.text,
+          "id_empresa": int.parse(idEmpresa.toString())
+        }),
       );
-    } else {
+
+      final data = jsonDecode(response.body);
+      debugPrint("📤 Respuesta registrarUsoInsumo: ${response.body}");
+      setState(() => isLoading = false);
+
+      if (data['success'] == true) {
+        Navigator.pop(context);
+        widget.onRegistrada();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ Actividad registrada y stock actualizado")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(" Error: ${data['message']}")),
+        );
+      }
+    } catch (e) {
+      debugPrint("Excepción registrarActividad: $e");
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error: ${data['message']}")),
+        const SnackBar(content: Text("Error al registrar la actividad.")),
       );
     }
   }
@@ -171,41 +225,57 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
           key: _formKey,
           child: Column(
             children: [
+              // Dropdown de insumos
               DropdownButtonFormField<String>(
                 value: selectedInsumo,
                 items: insumos.map<DropdownMenuItem<String>>((i) {
                   return DropdownMenuItem<String>(
                     value: i['nombre_insumo'],
-                    child: Text(i['nombre_insumo']),
+                    child: Text("${i['nombre_insumo']} (${i['medida'] ?? 'Sin medida'})"),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
                     selectedInsumo = value;
                     final insumo = insumos.firstWhere(
-                        (i) => i['nombre_insumo'] == value,
-                        orElse: () => {});
-                    medida = insumo['medida'] ?? '';
+                      (i) => i['nombre_insumo'] == value,
+                      orElse: () => {},
+                    );
+                    medida = insumo['cantidad'] ?? '';
+                    _medidaCtrl.text = medida ?? '';
                   });
                 },
                 decoration: const InputDecoration(labelText: "Seleccionar insumo"),
                 validator: (v) => v == null ? "Campo obligatorio" : null,
               ),
-              if (medida != null && medida!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text("Medida del insumo: $medida"),
+
+              const SizedBox(height: 10),
+
+              // Campo medida
+              TextFormField(
+                controller: _medidaCtrl,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: "Cantidad disponible",
+                  prefixIcon: Icon(Icons.scale),
                 ),
+              ),
+
+              const SizedBox(height: 10),
+
               TextFormField(
                 controller: _cantidadCtrl,
+                keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: "Cantidad utilizada"),
                 validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
               ),
               TextFormField(
                 controller: _dosificacionCtrl,
-                decoration: const InputDecoration(labelText: "Dosificación (ej: 60 ml por mata)"),
+                decoration:
+                    const InputDecoration(labelText: "Dosificación (ej: 60 ml por mata)"),
                 validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
               ),
+
               DropdownButtonFormField<String>(
                 value: objetivo,
                 decoration: const InputDecoration(labelText: "Objetivo de la actividad"),
@@ -223,6 +293,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
                 },
                 validator: (v) => v == null ? "Campo obligatorio" : null,
               ),
+
               if (mostrarOtroObjetivo)
                 TextFormField(
                   controller: _otroObjetivoCtrl,
@@ -231,6 +302,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
                       ? "Campo obligatorio"
                       : null,
                 ),
+
               TextFormField(
                 controller: _responsableCtrl,
                 decoration: const InputDecoration(labelText: "Responsable"),

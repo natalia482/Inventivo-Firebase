@@ -27,10 +27,9 @@ class ApiConfig {
   static const String listarPlantas = "$baseUrl/plantas/listar.php";
   static const String editarPlantas= "$baseUrl/plantas/actualizar.php";
   static const String eliminarPlantas= "$baseUrl/plantas/eliminar.php";
-
-  //Modulo de Facturas
-static const String registrarFactura = "$baseUrl/facturas/agregar.php";
-static const String listarFacturas = "$baseUrl/facturas/listar.php";
-static const String eliminarFactura = "$baseUrl/facturas/eliminar.php";
-static const String verDetalleFactura = "$baseUrl/facturas/detalle.php";
+ //Modulo de Facturas
+  static const String registrarFactura = "$baseUrl/facturas/agregar.php";
+  static const String listarFacturas = "$baseUrl/facturas/listar.php";
+  static const String eliminarFactura = "$baseUrl/facturas/eliminar.php";
+  static const String verDetalleFactura = "$baseUrl/facturas/detalle.php";
 }
