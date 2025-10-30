@@ -1,6 +1,6 @@
 class ApiConfig {
 
-  static const String baseUrl = "http://172.18.2.15/inventivo_backend/api";
+  static const String baseUrl = "http://192.168.70.1/inventivo_backend/api";
   static const String registroAdmin = "$baseUrl/usuarios/registrar.php";
   static const String login = "$baseUrl/usuarios/login.php";
 
@@ -33,4 +33,6 @@ class ApiConfig {
   static const String eliminarFactura = "$baseUrl/facturas/eliminar.php";
   static const String verDetalleFactura = "$baseUrl/facturas/detalle.php";
   static const String siguienteNumeroFactura = "$baseUrl/facturas/siguiente_numero.php";
+  //Modulo de Chatbot
+  static const String chatbot = "$baseUrl/chatbot.php";
 }

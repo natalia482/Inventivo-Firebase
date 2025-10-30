@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/screens/dashboard/admin_dashboar.dart';
+import 'package:inventivo/screens/modulos/chatbot/chatbot_screen.dart'; // 👈 importa la pantalla del bot
 import 'package:inventivo/services/auth_service.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 
@@ -85,12 +86,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _login,
                     child: const Text('Ingresar'),
                   ),
+            const SizedBox(height: 10),
             TextButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/registro_admin');
               },
               child: const Text('¿No tienes cuenta? Regístrate'),
-            )
+            ),
+
+            // 👇 NUEVA SECCIÓN: Botón del chatbot
+            const Divider(height: 30, thickness: 1),
+            TextButton.icon(
+              icon: const Icon(Icons.chat_bubble_outline, color: Colors.green),
+              label: const Text(
+                "Habla con nuestro bot 🤖",
+                style: TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatBotScreen()),
+                );
+              },
+            ),
           ],
         ),
       ),
