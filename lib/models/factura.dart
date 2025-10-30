@@ -31,7 +31,7 @@ class Factura {
 
   Map<String, dynamic> toJson() {
     return {
-      'numero_factura': numeroFactura,
+      'numero_factura': numeroFactura.isEmpty ? null : numeroFactura, // Si está vacío, enviar null
       'id_empresa': idEmpresa,
       'id_vendedor': idVendedor,
       'total': total,

@@ -229,7 +229,7 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
     }
 
     final factura = Factura(
-      numeroFactura: _numeroFacturaCtrl.text, // Ya está generado automáticamente
+      numeroFactura: '', // ✅ Vacío: el backend lo genera automáticamente
       idEmpresa: widget.idEmpresa,
       idVendedor: widget.idVendedor,
       total: total,
@@ -272,20 +272,22 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(
-                    controller: _numeroFacturaCtrl,
-                    readOnly: true, // 🔒 Solo lectura
-                    decoration: InputDecoration(
-                      labelText: 'Número de Factura',
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.receipt_long),
-                      filled: true,
-                      fillColor: Colors.grey[100], // Fondo gris para indicar que no es editable
-                      suffixIcon: const Icon(Icons.lock, color: Colors.grey),
-                    ),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  const Card(
+                    color: Color(0xFFE8F5E9),
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.green),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'El número de factura se generará automáticamente',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

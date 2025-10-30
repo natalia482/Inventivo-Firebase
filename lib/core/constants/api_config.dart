@@ -1,6 +1,6 @@
 class ApiConfig {
 
-  static const String baseUrl = "http://192.168.101.25/inventivo_backend/api";
+  static const String baseUrl = "http://172.18.2.15/inventivo_backend/api";
   static const String registroAdmin = "$baseUrl/usuarios/registrar.php";
   static const String login = "$baseUrl/usuarios/login.php";
 

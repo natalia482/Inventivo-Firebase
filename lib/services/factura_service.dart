@@ -31,16 +31,23 @@ class FacturaService {
   // Crear factura
   Future<Map<String, dynamic>> crearFactura(Factura factura) async {
     try {
+      final body = factura.toJson();
+      
+      // Debug: Imprimir lo que se está enviando
+      print('📤 Enviando factura: ${jsonEncode(body)}');
+      
       final response = await http.post(
         Uri.parse(ApiConfig.registrarFactura),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(factura.toJson()),
+        body: jsonEncode(body),
       );
 
+      print('📥 Respuesta del servidor: ${response.body}');
+      
       final data = jsonDecode(response.body);
       return data;
     } catch (e) {
-      print('Error creando factura: $e');
+      print('❌ Error creando factura: $e');
       return {
         'success': false,
         'message': 'Error de conexión: $e',
