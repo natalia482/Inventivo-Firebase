@@ -24,6 +24,7 @@ class _FacturasScreenState extends State<FacturasScreen> {
   @override
   void initState() {
     super.initState();
+    // Solo cargamos la lista de facturas. El número siguiente se carga en la pantalla de creación.
     cargarFacturas();
   }
 
@@ -37,6 +38,7 @@ class _FacturasScreenState extends State<FacturasScreen> {
   }
 
   void mostrarFormularioFactura() {
+    // Cuando la pantalla de creación se cierre (pop), recargamos la lista de facturas
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -125,7 +127,8 @@ class _FacturasScreenState extends State<FacturasScreen> {
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.green,
-                            child: const Icon(Icons.receipt, color: Colors.white),
+                            child:
+                                const Icon(Icons.receipt, color: Colors.white),
                           ),
                           title: Text(
                             'Factura #${factura.numeroFactura}',
@@ -138,11 +141,13 @@ class _FacturasScreenState extends State<FacturasScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.visibility, color: Colors.blue),
+                                icon: const Icon(Icons.visibility,
+                                    color: Colors.blue),
                                 onPressed: () => verDetalleFactura(factura),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => eliminarFactura(factura.id!),
                               ),
                             ],
@@ -173,21 +178,33 @@ class CrearFacturaScreen extends StatefulWidget {
 
 class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
   final FacturaService _service = FacturaService();
-  
+
   List<ProductoDisponible> productosDisponibles = [];
   List<DetalleFactura> detalles = [];
   bool isLoading = true;
   double total = 0.0;
+  int? siguienteNumeroFactura; // Estado para el número de factura
 
   @override
   void initState() {
     super.initState();
     cargarProductos();
+    cargarSiguienteNumeroFactura(); // Cargar el siguiente número
+  }
+
+  // Método para cargar el siguiente número de factura
+  Future<void> cargarSiguienteNumeroFactura() async {
+    final nextNumber =
+        await _service.obtenerSiguienteNumeroFactura(widget.idEmpresa);
+    setState(() {
+      siguienteNumeroFactura = nextNumber;
+    });
   }
 
   Future<void> cargarProductos() async {
     setState(() => isLoading = true);
-    final productos = await _service.obtenerProductosDisponibles(widget.idEmpresa);
+    final productos =
+        await _service.obtenerProductosDisponibles(widget.idEmpresa);
     setState(() {
       productosDisponibles = productos;
       isLoading = false;
@@ -229,7 +246,7 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
     }
 
     final factura = Factura(
-      numeroFactura: '', // ✅ Vacío: el backend lo genera automáticamente
+      numeroFactura: '', // El backend lo ignora y lo genera
       idEmpresa: widget.idEmpresa,
       idVendedor: widget.idVendedor,
       total: total,
@@ -239,9 +256,12 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
     final result = await _service.crearFactura(factura);
 
     if (result['success'] == true) {
+      // Capturar el número de factura generado por el backend
+      final nuevoNumeroFactura = result['numero_factura'];
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Factura ${result['numero_factura']} creada exitosamente'),
+          content: Text(
+              '✅ Factura #$nuevoNumeroFactura creada exitosamente'), // Usar el número capturado
         ),
       );
       Navigator.pop(context);
@@ -272,18 +292,21 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Card(
-                    color: Color(0xFFE8F5E9),
+                  Card(
+                    color: const Color(0xFFE8F5E9),
                     child: Padding(
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.green),
-                          SizedBox(width: 8),
+                          const Icon(Icons.info_outline, color: Colors.green),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'El número de factura se generará automáticamente',
-                              style: TextStyle(fontSize: 13),
+                              siguienteNumeroFactura == null
+                                  ? 'Cargando número de factura...'
+                                  : 'Próxima Factura: #${siguienteNumeroFactura!}', // Muestra el número siguiente
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -350,7 +373,8 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
                                   onPressed: () => eliminarDetalle(index),
                                 ),
                               ],

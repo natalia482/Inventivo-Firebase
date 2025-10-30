@@ -32,4 +32,5 @@ class ApiConfig {
   static const String listarFacturas = "$baseUrl/facturas/listar.php";
   static const String eliminarFactura = "$baseUrl/facturas/eliminar.php";
   static const String verDetalleFactura = "$baseUrl/facturas/detalle.php";
+  static const String siguienteNumeroFactura = "$baseUrl/facturas/siguiente_numero.php";
 }

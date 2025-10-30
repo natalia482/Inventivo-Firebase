@@ -4,6 +4,8 @@ import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/models/factura.dart';
 
 class FacturaService {
+
+  
   // Obtener productos disponibles (usa el endpoint de plantas)
   Future<List<ProductoDisponible>> obtenerProductosDisponibles(int idEmpresa) async {
     try {
@@ -27,7 +29,25 @@ class FacturaService {
       return [];
     }
   }
+  // Obtener el siguiente número de factura
+    Future<int> obtenerSiguienteNumeroFactura(int idEmpresa) async {
+      try {
+        final response = await http.get(
+          Uri.parse('${ApiConfig.siguienteNumeroFactura}?id_empresa=$idEmpresa'),
+        );
 
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true && data['siguiente_numero'] != null) {
+            return data['siguiente_numero'];
+          }
+        }
+        return 1; // Retorna 1 por defecto en caso de fallo o no data
+      } catch (e) {
+        print('Error obteniendo siguiente número de factura: $e');
+        return 1; // Retorna 1 en caso de excepción
+      }
+    }
   // Crear factura
   Future<Map<String, dynamic>> crearFactura(Factura factura) async {
     try {
