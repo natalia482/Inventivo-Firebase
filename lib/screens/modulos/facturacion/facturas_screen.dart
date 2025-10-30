@@ -30,7 +30,8 @@ class _FacturasScreenState extends State<FacturasScreen> {
 
   Future<void> cargarFacturas() async {
     setState(() => isLoading = true);
-    final data = await _service.listarFacturas(widget.idEmpresa);
+    // El widget.idEmpresa viene del AdminDashboard y se pasa correctamente.
+    final data = await _service.listarFacturas(widget.idEmpresa); // Envía idEmpresa
     setState(() {
       facturas = data;
       isLoading = false;

@@ -81,7 +81,6 @@ class FacturaService {
       final response = await http.get(
         Uri.parse('${ApiConfig.listarFacturas}?id_empresa=$idEmpresa'),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
