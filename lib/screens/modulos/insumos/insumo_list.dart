@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
+// ✅ NUEVA IMPORTACIÓN: Necesaria para mostrar la página de historial en el popup
+import 'package:inventivo/screens/modulos/insumos/historial_uso_insumos_page.dart'; 
 
 class InsumosPage extends StatefulWidget {
   const InsumosPage({super.key});
@@ -60,6 +62,30 @@ class _InsumosPageState extends State<InsumosPage> {
         });
       }
     }
+  }
+
+  // ✅ NUEVO MÉTODO: Muestra HistorialUsoInsumosPage dentro de un popup
+  void _mostrarPopupActividades() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          // Estilo para que ocupe casi toda la pantalla
+          insetPadding: const EdgeInsets.all(10),
+          contentPadding: EdgeInsets.zero,
+          titlePadding: EdgeInsets.zero,
+          
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.95,
+            height: MediaQuery.of(context).size.height * 0.95,
+            
+            // Renderizamos la página de historial directamente.
+            // Nota: HistorialUsoInsumosPage es un Scaffold, por eso funciona aquí.
+            child: HistorialUsoInsumosPage(),
+          ),
+        );
+      },
+    );
   }
 
   // 🔹 Mostrar popup para registrar insumo
@@ -130,10 +156,9 @@ class _InsumosPageState extends State<InsumosPage> {
                       TextFormField(
                         controller: precioController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: "Precio"),
+                        decoration: const InputDecoration(labelText: "Precio de compra"),
                         validator: (value) => value!.isEmpty ? "Ingrese el precio" : null,
                       ),
-               
                     ],
                   ),
                 ),
@@ -191,7 +216,7 @@ class _InsumosPageState extends State<InsumosPage> {
     }
   }
 
-  // 🔹 Popup para editar insumo
+  // 🔹 Popup para editar insumo (Mantenemos la corrección de toUpperCase() para Medida)
   Future<void> _editarInsumo(dynamic insumo) async {
   String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
   String? categoriaEdit =
@@ -249,7 +274,7 @@ class _InsumosPageState extends State<InsumosPage> {
                     decoration: const InputDecoration(labelText: "Cantidad")),
                 TextField(
                     controller: precioCtrl,
-                    decoration: const InputDecoration(labelText: "Precio")),
+                    decoration: const InputDecoration(labelText: "Precio de compra")),
                 
               ],
             ),
@@ -295,17 +320,23 @@ class _InsumosPageState extends State<InsumosPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tu cuerpo original sin cambios
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Insumos"),
+        title: const Text("Gestión de Insumos"),
         backgroundColor: Colors.green,
         actions: [
-          TextButton.icon(
-            onPressed: _mostrarPopupRegistro,
-            icon: const Icon(Icons.add_circle, color: Colors.white),
-            label: const Text("Registrar insumo", style: TextStyle(color: Colors.white)),
-          ),
+         // ✅ Botón 1: "Lista de actividades"
+        TextButton.icon(
+          onPressed: _mostrarPopupActividades,
+          icon: const Icon(Icons.history, color: Colors.white),
+          label: const Text("Lista de actividades", style: TextStyle(color: Colors.white)),
+        ),
+        // ✅ Botón 2: "Registrar insumo"
+        TextButton.icon(
+          onPressed: _mostrarPopupRegistro,
+          icon: const Icon(Icons.add_circle, color: Colors.white),
+          label: const Text("Registrar insumo", style: TextStyle(color: Colors.white)),
+        ),
         ],
       ),
       body: isLoading

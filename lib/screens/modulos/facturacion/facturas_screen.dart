@@ -222,7 +222,7 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
             detalles.add(detalle);
             calcularTotal();
           });
-        },
+        }
       ),
     );
   }

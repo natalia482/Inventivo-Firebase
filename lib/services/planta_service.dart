@@ -54,108 +54,111 @@ class Planta {
   }
 }
 
-// Listar plantas
-Future<List<Planta>> obtenerPlantas(int idEmpresa, {String filtro = ''}) async {
-  try {
-    final url = Uri.parse('${ApiConfig.listarPlantas}?id_empresa=$idEmpresa');
-    final response = await http.get(url);
+// ✅ CORRECCIÓN CLAVE: Las funciones se mueven dentro de la clase para ser métodos.
+class PlantaService {
+  
+  // Listar plantas
+  Future<List<Planta>> obtenerPlantas(int idEmpresa, {String filtro = ''}) async {
+    try {
+      final url = Uri.parse('${ApiConfig.listarPlantas}?id_empresa=$idEmpresa');
+      final response = await http.get(url);
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success'] == true && data['data'] != null) {
-        List plantas = data['data'];
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          List plantas = data['data'];
 
-        if (filtro.isNotEmpty) {
-          plantas = plantas.where((p) {
-            final nombre = p['nombre_plantas'].toString().toLowerCase();
-            return nombre.contains(filtro.toLowerCase());
-          }).toList();
+          if (filtro.isNotEmpty) {
+            plantas = plantas.where((p) {
+              final nombre = p['nombre_plantas'].toString().toLowerCase();
+              return nombre.contains(filtro.toLowerCase());
+            }).toList();
+          }
+
+          return plantas.map((e) => Planta.fromJson(e)).toList();
         }
-
-        return plantas.map((e) => Planta.fromJson(e)).toList();
       }
+      return [];
+    } catch (e) {
+      print('Error en obtenerPlantas: $e');
+      return [];
     }
-    return [];
-  } catch (e) {
-    print('Error en obtenerPlantas: $e');
-    return [];
   }
-}
 
-//  AGREGAR PLANTA
-Future<bool> registrarPlanta(Planta planta) async {
-  try {
-    final response = await http.post(
-      Uri.parse(ApiConfig.registrarPlantas),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "nombre_plantas": planta.nombrePlantas,
-        "numero_bolsa": planta.numeroBolsa,
-        "precio": planta.precio.toString(),
-        "categoria": planta.categoria,
-        "stock": planta.stock.toString(),
-        "id_empresa": planta.idEmpresa.toString(),
-      }),
-    );
-    final data = jsonDecode(response.body);
-    return data['success'] == true;
-  } catch (e) {
-    print('Error en registrarPlanta: $e');
-    return false;
-  }
-}
-
-// ACTUALIZAR PLANTA
-Future<bool> actualizarPlanta(Planta planta) async {
-  try {
-    final response = await http.post(
-      Uri.parse(ApiConfig.editarPlantas),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "id": planta.id,
-        "nombre_plantas": planta.nombrePlantas,
-        "numero_bolsa": planta.numeroBolsa,
-        "precio": planta.precio,
-        "categoria": planta.categoria,
-        "stock": planta.stock,
-        "estado": planta.estado,
-      }),
-    );
-
-    print("🔹 Respuesta del backend (actualizar): ${response.body}");
-
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      return json["success"] == true;
-    } else {
-      print("⚠️ Error HTTP: ${response.statusCode}");
+  // AGREGAR PLANTA
+  Future<bool> registrarPlanta(Planta planta) async {
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.registrarPlantas),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "nombre_plantas": planta.nombrePlantas,
+          "numero_bolsa": planta.numeroBolsa,
+          "precio": planta.precio.toString(),
+          "categoria": planta.categoria,
+          "stock": planta.stock.toString(),
+          "id_empresa": planta.idEmpresa.toString(),
+        }),
+      );
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } catch (e) {
+      print('Error en registrarPlanta: $e');
       return false;
     }
-  } catch (e) {
-    print("❌ Error en actualizarPlanta: $e");
-    return false;
   }
-}
 
- //Eliminar planta
-  Future<bool> eliminarPlanta(int id) async {
-      try {
-        final response = await http.post(
-          Uri.parse(ApiConfig.eliminarPlantas),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'id': id}),
-        );
+  // ACTUALIZAR PLANTA
+  Future<bool> actualizarPlanta(Planta planta) async {
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.editarPlantas),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "id": planta.id,
+          "nombre_plantas": planta.nombrePlantas,
+          "numero_bolsa": planta.numeroBolsa,
+          "precio": planta.precio,
+          "categoria": planta.categoria,
+          "stock": planta.stock,
+          "estado": planta.estado,
+        }),
+      );
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          return data['success'] == true;
-        } else {
-          print('Error HTTP: ${response.statusCode}');
-          return false;
-        }
-      } catch (e) {
-        print('Error al eliminar planta: $e');
+      print("🔹 Respuesta del backend (actualizar): ${response.body}");
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return json["success"] == true;
+      } else {
+        print("⚠️ Error HTTP: ${response.statusCode}");
         return false;
       }
+    } catch (e) {
+      print("❌ Error en actualizarPlanta: $e");
+      return false;
     }
+  }
 
+  // Eliminar planta
+  Future<bool> eliminarPlanta(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.eliminarPlantas),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      } else {
+        print('Error HTTP: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error al eliminar planta: $e');
+      return false;
+    }
+  }
+}

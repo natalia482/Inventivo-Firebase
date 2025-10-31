@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 import 'package:inventivo/screens/modulos/facturacion/facturas_screen.dart';
 import 'package:inventivo/screens/modulos/plantas/plantas_page.dart';
-import 'package:inventivo/screens/modulos/insumos/historial_uso_insumos_page.dart';
 import 'package:inventivo/screens/widgets/logout.dart';
 import 'package:inventivo/screens/modulos/personal/listar_personal.dart';
 import 'package:inventivo/screens/modulos/insumos/insumo_list.dart';
@@ -57,20 +56,6 @@ class AdminDashboard extends StatelessWidget {
                   );
                 },
               ),
-              ElevatedButton.icon(
-              icon: const Icon(Icons.agriculture),
-              label: const Text("Registrar Actividad Agrícola"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistorialUsoInsumosPage(
-                      
-                    ),
-                  ),
-                );
-              },
-            ),
               // 🔹 Plantas
               ElevatedButton.icon(
                 icon: const Icon(Icons.local_florist),
@@ -84,35 +69,6 @@ class AdminDashboard extends StatelessWidget {
                   );
                 },
               ),
- // 🔹 Plantas
-          
-          ElevatedButton.icon(
-              icon: const Icon(Icons.receipt_long),
-              label: const Text("Modulo de Facturas"),
-              onPressed: () async {
-                final session = SessionManager();
-                final user = await session.getUser();
-
-                if (user != null && user['id'] != null) {
-                  final idVendedor = int.parse(user['id'].toString());
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FacturasScreen(
-                        idEmpresa: idEmpresa,
-                        idVendedor: idVendedor,
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Error: No se encontró el usuario en sesión')),
-                  );
-                }
-              },
-            ),
-
             ],
           ),
         ),

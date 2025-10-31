@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 import 'package:inventivo/services/planta_service.dart';
+// ✅ Importación de la pantalla de Facturas para el popup
+import 'package:inventivo/screens/modulos/facturacion/facturas_screen.dart'; 
 
 class PlantasPage extends StatefulWidget {
   const PlantasPage({Key? key}) : super(key: key);
@@ -13,10 +15,14 @@ class PlantasPage extends StatefulWidget {
 }
 
 class _PlantasPageState extends State<PlantasPage> {
+  // ✅ CORRECCIÓN 1: Instanciar la clase PlantaService para poder usar sus métodos
+  final PlantaService _plantaService = PlantaService();
+
   List<Planta> plantas = [];
   bool isLoading = true;
   String filtro = '';
   int? idEmpresa;
+  int? idVendedor; // Necesario para FacturasScreen
 
   @override
   void initState() {
@@ -27,15 +33,65 @@ class _PlantasPageState extends State<PlantasPage> {
   Future<void> _cargarDatos() async {
     final session = SessionManager();
     final user = await session.getUser();
+    
+    // Obtener IDs de la sesión
     idEmpresa = user?["id_empresa"];
+    idVendedor = int.tryParse(user?["id"]?.toString() ?? '0');
+    if (idVendedor == 0) idVendedor = null;
+
     if (idEmpresa != null) {
-      final data = await obtenerPlantas(idEmpresa!, filtro: filtro);
+      // ✅ CORRECCIÓN 2: Usar la instancia _plantaService
+      final data = await _plantaService.obtenerPlantas(idEmpresa!, filtro: filtro);
       setState(() {
         plantas = data;
         isLoading = false;
       });
+    } else {
+        setState(() => isLoading = false);
     }
   }
+
+  // Función helper ahora delegando al servicio
+  Future<List<Planta>> obtenerPlantas(int idEmpresa, {String filtro = ''}) async {
+    return await _plantaService.obtenerPlantas(idEmpresa, filtro: filtro);
+  }
+  
+  // Muestra FacturasScreen dentro de un popup
+  void _mostrarPopupRemisiones() {
+    if (idEmpresa == null || idVendedor == null || idVendedor == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error: Datos de empresa o vendedor no disponibles.")),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          // Estilo para hacerlo un modal grande
+          insetPadding: EdgeInsets.zero,
+          contentPadding: EdgeInsets.zero,
+          titlePadding: EdgeInsets.zero,
+          
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.95,
+            height: MediaQuery.of(context).size.height * 0.95,
+            
+            // Renderizamos FacturasScreen, pasando los IDs necesarios.
+            child: FacturasScreen(
+              idEmpresa: idEmpresa!,
+              idVendedor: idVendedor!,
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      // Recargar datos al cerrar el modal (para actualizar el stock después de una remisión)
+      _cargarDatos();
+    });
+  }
+
 
   // 
   Future<void> _mostrarDialogoPlanta({Planta? planta}) async {
@@ -155,9 +211,10 @@ class _PlantasPageState extends State<PlantasPage> {
                 idEmpresa: idEmpresa!,
               );
 
+              // ✅ CORRECCIÓN 3: Usar la instancia del servicio para registrar/actualizar
               bool ok = planta == null
-                  ? await registrarPlanta(nueva)
-                  : await actualizarPlanta(nueva);
+                  ? await _plantaService.registrarPlanta(nueva)
+                  : await _plantaService.actualizarPlanta(nueva);
 
               if (ok) {
                 Navigator.pop(context);
@@ -180,25 +237,8 @@ class _PlantasPageState extends State<PlantasPage> {
 
   // 🗑️ Eliminar planta completamente
   Future<bool> eliminarPlanta(int id) async {
-    try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.eliminarPlantas),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": id}),
-      );
-
-      print("Respuesta backend eliminar: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        return json["success"] == true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      print("Error al eliminar planta: $e");
-      return false;
-    }
+    // ✅ CORRECCIÓN 4: Usar la instancia del servicio para eliminar
+    return await _plantaService.eliminarPlanta(id);
   }
 
   // 🔸 Verifica nivel de stock
@@ -214,11 +254,25 @@ class _PlantasPageState extends State<PlantasPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool datosListos = idEmpresa != null && idVendedor != null && idVendedor != 0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Gestión de Plantas"),
         backgroundColor: Colors.white,
         actions: [
+          // ✅ NUEVO BOTÓN: "Lista Remisiones"
+          TextButton.icon(
+            onPressed: datosListos ? _mostrarPopupRemisiones : null,
+            icon: const Icon(Icons.receipt_long, color: Color.fromARGB(255, 48, 105, 58)),
+            label: const Text(
+              "Lista Remisiones",
+              style: TextStyle(
+                  color: Color.fromARGB(255, 62, 153, 89),
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: TextButton.icon(
