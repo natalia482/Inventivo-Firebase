@@ -8,47 +8,42 @@ class HistorialUsoInsumosPage extends StatefulWidget {
   const HistorialUsoInsumosPage({super.key});
 
   @override
-  State<HistorialUsoInsumosPage> createState() => _HistorialUsoInsumosPageState();
+  State<HistorialUsoInsumosPage> createState() =>
+      _HistorialUsoInsumosPageState();
 }
 
 class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
   List<dynamic> actividades = [];
   bool isLoading = true;
-  int? idEmpresa; // ✅ Nuevo: Almacena el ID de la empresa
+  int? idEmpresa;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatosIniciales(); // ✅ Llama a la función para obtener el ID antes de listar
+    _cargarDatosIniciales();
   }
 
-  // ✅ Nuevo: Obtiene el ID del usuario/empresa
   Future<void> _cargarDatosIniciales() async {
     final session = SessionManager();
     final user = await session.getUser();
-    
-    // Asignar el ID de la empresa
     if (user != null && user['id_empresa'] != null) {
       idEmpresa = int.tryParse(user['id_empresa'].toString());
     }
-    cargarActividades(); // Llama a cargar actividades después de obtener el ID
+    cargarActividades();
   }
 
   Future<void> cargarActividades() async {
     if (idEmpresa == null) {
       setState(() => isLoading = false);
-      debugPrint("⚠️ No se pudo cargar actividades: Falta idEmpresa.");
       return;
     }
 
     setState(() => isLoading = true);
-
     try {
-      // ✅ CRÍTICO: Cambiamos a POST para enviar el id_empresa para filtrar
       final response = await http.post(
         Uri.parse(ApiConfig.listarUsoInsumos),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id_empresa": idEmpresa}), // Enviamos el filtro al backend
+        body: jsonEncode({"id_empresa": idEmpresa}),
       );
 
       if (response.statusCode == 200) {
@@ -59,15 +54,12 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
             isLoading = false;
           });
         } else {
-          debugPrint("Error backend: ${data['message']}");
           setState(() => isLoading = false);
         }
       } else {
-        debugPrint("Error HTTP: ${response.statusCode}");
         setState(() => isLoading = false);
       }
     } catch (e) {
-      debugPrint("Excepción al cargar actividades: $e");
       setState(() => isLoading = false);
     }
   }
@@ -84,44 +76,88 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Historial de Uso de Insumos")),
+      backgroundColor: const Color(0xFFF8FAF8),
+      appBar: AppBar(
+        title: const Text(
+          "Historial de Uso de Insumos",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF2E7D32),
+        elevation: 3,
+      ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
           : actividades.isEmpty
-              ? const Center(child: Text("No hay actividades registradas."))
-              : ListView.builder(
-                itemCount: actividades.length,
-                itemBuilder: (context, index) {
-                  final a = actividades[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: ListTile(
-                      title: Text(a['nombre_insumo'] ?? 'Insumo'),
-                      subtitle: Text(
-                        "📅 ${a['fecha']}\n💧 ${a['cantidad_utilizada']} ${a['dosificacion']}\n🎯 ${a['objetivo']}\n👤 ${a['responsable']}",
-                      ),
-                    ),
-                  );
-                },
-              ),
+              ? const Center(
+                  child: Text(
+                    "No hay actividades registradas.",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
+              : RefreshIndicator(
+                  color: const Color(0xFF2E7D32),
+                  onRefresh: cargarActividades,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: actividades.length,
+                    itemBuilder: (context, index) {
+                      final a = actividades[index];
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                a['nombre_insumo'] ?? 'Insumo desconocido',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("📅 ${a['fecha'] ?? '-'}"),
+                                  Text("👤 ${a['responsable'] ?? '-'}"),
+                                ],
+                              ),
+                              const Divider(height: 15),
+                              Text("💧 Cantidad utilizada: ${a['cantidad_utilizada']} ${a['dosificacion']}"),
+                              Text("🎯 Objetivo: ${a['objetivo'] ?? '-'}"),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF43A047),
         onPressed: mostrarPopupRegistro,
         icon: const Icon(Icons.add),
-        label: const Text("Registrar Actividad Agrícola"),
+        label: const Text("Registrar actividad"),
       ),
     );
   }
 }
-
-// La lógica de RegistrarActividadPopup ya estaba bien diseñada para cargar insumos por empresa
-// No necesita cambios, ya que lee idEmpresa desde la sesión y lo envía por POST a ApiConfig.listarInsumos.
 
 class RegistrarActividadPopup extends StatefulWidget {
   final VoidCallback onRegistrada;
   const RegistrarActividadPopup({super.key, required this.onRegistrada});
 
   @override
-  State<RegistrarActividadPopup> createState() => _RegistrarActividadPopupState();
+  State<RegistrarActividadPopup> createState() =>
+      _RegistrarActividadPopupState();
 }
 
 class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
@@ -151,33 +187,18 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
       final user = await session.getUser();
       final idEmpresa = user?['id_empresa'];
 
-      debugPrint("🧾 Cargando insumos para empresa: $idEmpresa");
-
-      if (idEmpresa == null || idEmpresa.toString().isEmpty) {
-        debugPrint("⚠️ No se encontró id_empresa en sesión");
-        return;
-      }
-
       final response = await http.post(
         Uri.parse(ApiConfig.listarInsumos),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"id_empresa": int.parse(idEmpresa.toString())}),
       );
 
-      debugPrint("📦 Respuesta listarInsumos: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          setState(() => insumos = data['data']);
-        } else {
-          debugPrint("Error backend: ${data['message']}");
-        }
-      } else {
-        debugPrint("Error HTTP: ${response.statusCode}");
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        setState(() => insumos = data['data']);
       }
     } catch (e) {
-      debugPrint("Excepción cargarInsumos: $e");
+      debugPrint("Error al cargar insumos: $e");
     }
   }
 
@@ -190,22 +211,13 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
     }
 
     setState(() => isLoading = true);
-
     try {
       final session = SessionManager();
       final user = await session.getUser();
-
       final idEmpresa = user?['id_empresa'];
-      debugPrint("🧠 Datos del usuario: $user");
 
-      if (idEmpresa == null || idEmpresa.toString().isEmpty) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Error: Falta el ID de la empresa.")));
-        setState(() => isLoading = false);
-        return;
-      }
-
-      final insumo = insumos.firstWhere((i) => i['nombre_insumo'] == selectedInsumo);
+      final insumo =
+          insumos.firstWhere((i) => i['nombre_insumo'] == selectedInsumo);
       final idInsumo = insumo['id'];
 
       final response = await http.post(
@@ -215,46 +227,47 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
           "id_insumo": idInsumo,
           "cantidad_utilizada": _cantidadCtrl.text,
           "dosificacion": _dosificacionCtrl.text,
-          "objetivo": objetivo == "Otro" ? _otroObjetivoCtrl.text : objetivo,
+          "objetivo": objetivo == "Otro"
+              ? _otroObjetivoCtrl.text
+              : objetivo,
           "responsable": _responsableCtrl.text,
           "id_empresa": int.parse(idEmpresa.toString())
         }),
       );
 
       final data = jsonDecode(response.body);
-      debugPrint("📤 Respuesta registrarUsoInsumo: ${response.body}");
       setState(() => isLoading = false);
 
       if (data['success'] == true) {
         Navigator.pop(context);
         widget.onRegistrada();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Actividad registrada y stock actualizado")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(" Error: ${data['message']}")),
+          const SnackBar(
+            content: Text("✅ Actividad registrada y stock actualizado"),
+          ),
         );
       }
     } catch (e) {
-      debugPrint("Excepción registrarActividad: $e");
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error al registrar la actividad.")),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Registrar Actividad Agrícola"),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        "Registrar Actividad Agrícola",
+        style: TextStyle(
+          color: Color(0xFF2E7D32),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Dropdown de insumos
               DropdownButtonFormField<String>(
                 value: selectedInsumo,
                 items: insumos.map<DropdownMenuItem<String>>((i) {
@@ -267,47 +280,53 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
                   setState(() {
                     selectedInsumo = value;
                     final insumo = insumos.firstWhere(
-                      (i) => i['nombre_insumo'] == value,
-                      orElse: () => {},
-                    );
+                        (i) => i['nombre_insumo'] == value,
+                        orElse: () => {});
                     medida = insumo['cantidad'] ?? '';
                     _medidaCtrl.text = medida ?? '';
                   });
                 },
-                decoration: const InputDecoration(labelText: "Seleccionar insumo"),
+                decoration: const InputDecoration(
+                  labelText: "Seleccionar insumo",
+                  prefixIcon: Icon(Icons.grass_outlined, color: Color(0xFF43A047)),
+                ),
                 validator: (v) => v == null ? "Campo obligatorio" : null,
               ),
-
-              const SizedBox(height: 10),
-
-              // Campo medida
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _medidaCtrl,
                 readOnly: true,
                 decoration: const InputDecoration(
                   labelText: "Cantidad disponible",
-                  prefixIcon: Icon(Icons.scale),
+                  prefixIcon: Icon(Icons.scale, color: Color(0xFF43A047)),
                 ),
               ),
-
-              const SizedBox(height: 10),
-
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _cantidadCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Cantidad utilizada"),
+                decoration: const InputDecoration(
+                  labelText: "Cantidad utilizada",
+                  prefixIcon: Icon(Icons.local_drink_outlined, color: Color(0xFF43A047)),
+                ),
                 validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _dosificacionCtrl,
-                decoration:
-                    const InputDecoration(labelText: "Dosificación (ej: 60 ml por mata)"),
+                decoration: const InputDecoration(
+                  labelText: "Dosificación (ej: 60 ml por mata)",
+                  prefixIcon: Icon(Icons.edit_outlined, color: Color(0xFF43A047)),
+                ),
                 validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
               ),
-
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: objetivo,
-                decoration: const InputDecoration(labelText: "Objetivo de la actividad"),
+                decoration: const InputDecoration(
+                  labelText: "Objetivo de la actividad",
+                  prefixIcon: Icon(Icons.flag_outlined, color: Color(0xFF43A047)),
+                ),
                 items: const [
                   DropdownMenuItem(value: "Fertilización", child: Text("Fertilización")),
                   DropdownMenuItem(value: "Abono", child: Text("Abono")),
@@ -322,32 +341,49 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
                 },
                 validator: (v) => v == null ? "Campo obligatorio" : null,
               ),
-
               if (mostrarOtroObjetivo)
                 TextFormField(
                   controller: _otroObjetivoCtrl,
-                  decoration: const InputDecoration(labelText: "Especificar otro objetivo"),
-                  validator: (v) => mostrarOtroObjetivo && v!.isEmpty
-                      ? "Campo obligatorio"
-                      : null,
+                  decoration: const InputDecoration(
+                    labelText: "Especificar otro objetivo",
+                    prefixIcon: Icon(Icons.text_fields, color: Color(0xFF43A047)),
+                  ),
+                  validator: (v) =>
+                      mostrarOtroObjetivo && v!.isEmpty ? "Campo obligatorio" : null,
                 ),
-
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _responsableCtrl,
-                decoration: const InputDecoration(labelText: "Responsable"),
+                decoration: const InputDecoration(
+                  labelText: "Responsable",
+                  prefixIcon: Icon(Icons.person_outline, color: Color(0xFF43A047)),
+                ),
                 validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
               ),
             ],
           ),
         ),
       ),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-        ElevatedButton(
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancelar"),
+        ),
+        ElevatedButton.icon(
           onPressed: isLoading ? null : registrarActividad,
-          child: isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : const Text("Registrar"),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF43A047),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: isLoading
+              ? const SizedBox(
+                  height: 16, width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.save),
+          label: Text(isLoading ? "Guardando..." : "Registrar"),
         ),
       ],
     );
