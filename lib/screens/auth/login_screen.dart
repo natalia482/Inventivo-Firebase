@@ -53,12 +53,19 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         );
-      } else {
-        Navigator.pushReplacementNamed(context, '/dashboard_trabajador');
+      } else if (rol == 'TRABAJADOR') {
+       Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminDashboard(
+              idEmpresa: int.parse(response['usuario']['id_empresa'].toString()),
+            ),
+          ),
+        );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ ${response['message']}')),
+        SnackBar(content: Text('${response['message']}')),
       );
     }
   }

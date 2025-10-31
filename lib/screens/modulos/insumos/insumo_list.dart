@@ -15,7 +15,7 @@ class InsumosPage extends StatefulWidget {
 class _InsumosPageState extends State<InsumosPage> {
   List<dynamic> insumos = [];
   bool isLoading = true;
-  String filtro = '';
+  String? userRole; // ✅ NUEVO: Almacena el rol del usuario
   int? idEmpresa;
 
   final _formKey = GlobalKey<FormState>();
@@ -42,6 +42,7 @@ class _InsumosPageState extends State<InsumosPage> {
 
     if (user != null && user["id_empresa"] != null) {
       idEmpresa = user["id_empresa"];
+      userRole = user["rol"]; // ✅ Obtenemos el rol de la sesión
       await listarInsumos();
     } else {
       setState(() => isLoading = false);
@@ -101,6 +102,7 @@ class _InsumosPageState extends State<InsumosPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ... (Campos de formulario omitidos por brevedad)
                       _buildInput(nombreController, "Nombre del insumo"),
                       DropdownButtonFormField<String>(
                         value: categoriaSeleccionada,
@@ -152,7 +154,7 @@ class _InsumosPageState extends State<InsumosPage> {
       {TextInputType type = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: TextField(
+      child: TextFormField( // Cambiado a TextFormField para usar la validación del form
         controller: ctrl,
         keyboardType: type,
         decoration: InputDecoration(
@@ -161,6 +163,7 @@ class _InsumosPageState extends State<InsumosPage> {
           filled: true,
           fillColor: Colors.white,
         ),
+        validator: (value) => value!.isEmpty ? "Campo obligatorio" : null,
       ),
     );
   }
@@ -192,6 +195,9 @@ class _InsumosPageState extends State<InsumosPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Insumo registrado correctamente")),
       );
+      nombreController.clear();
+      precioController.clear();
+      cantidadController.clear();
       listarInsumos();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -201,7 +207,8 @@ class _InsumosPageState extends State<InsumosPage> {
   }
 
   Future<void> _editarInsumo(dynamic insumo) async {
-    String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
+    // ... (Lógica de edición omitida por brevedad, asume que usa isAdmin en el build)
+     String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
     String? categoriaEdit =
         categorias.contains(insumo["categoria"]) ? insumo["categoria"] : "Otro";
 
@@ -298,6 +305,8 @@ class _InsumosPageState extends State<InsumosPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isAdmin = userRole == 'ADMINISTRADOR'; // ✅ Bandera de control de acceso
+
     return Scaffold(
       backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
@@ -305,18 +314,21 @@ class _InsumosPageState extends State<InsumosPage> {
             style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF2E7D32),
         actions: [
+          // Botón "Lista de actividades" (Visible para todos)
           TextButton.icon(
             onPressed: _mostrarPopupActividades,
             icon: const Icon(Icons.history, color: Colors.white),
             label: const Text("Lista de actividades",
                 style: TextStyle(color: Colors.white)),
           ),
-          TextButton.icon(
-            onPressed: _mostrarPopupRegistro,
-            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            label: const Text("Registrar insumo",
-                style: TextStyle(color: Colors.white)),
-          ),
+          // Botón "Registrar insumo" (SOLO ADMIN)
+          if (isAdmin) // ✅ Renderizado condicional
+            TextButton.icon(
+              onPressed: _mostrarPopupRegistro,
+              icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+              label: const Text("Registrar insumo",
+                  style: TextStyle(color: Colors.white)),
+            ),
         ],
       ),
       body: isLoading
@@ -349,57 +361,60 @@ class _InsumosPageState extends State<InsumosPage> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        onChanged: (val) {
-                          setState(() => filtro = val);
-                        },
+                        
                       ),
                     ),
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: listarInsumos,
                         color: const Color(0xFF2E7D32),
-                        child: ListView.builder(
-                          itemCount: insumos.length,
-                          itemBuilder: (context, index) {
-                            final insumo = insumos[index];
-                            final nombre = insumo["nombre_insumo"];
-                            final categoria = insumo["categoria"];
-                            final medida = insumo["medida"];
-                            final cantidad = insumo["cantidad"];
-                            final precio = insumo["precio"];
+                        child: insumos.isEmpty
+                            ? const Center(child: Text("No hay insumos registrados"))
+                            : ListView.builder(
+                                  itemCount: insumos.length,
+                                  itemBuilder: (context, index) {
+                                    final insumo = insumos[index];
+                                    final nombre = insumo["nombre_insumo"];
+                                    final categoria = insumo["categoria"];
+                                    final medida = insumo["medida"];
+                                    final cantidad = insumo["cantidad"];
+                                    final precio = insumo["precio"];
 
-                            return Card(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15)),
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 12),
-                              elevation: 4,
-                              child: ListTile(
-                                leading: const Icon(Icons.inventory_2,
-                                    color: Color(0xFF2E7D32), size: 35),
-                                title: Text(
-                                  nombre,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 16),
+                                    return Card(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(15)),
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 8, horizontal: 12),
+                                      elevation: 4,
+                                      child: ListTile(
+                                        leading: const Icon(Icons.inventory_2,
+                                            color: Color(0xFF2E7D32), size: 35),
+                                        title: Text(
+                                          nombre,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                        subtitle: Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Text(
+                                            "Categoría: $categoria\n"
+                                            "Medida: $medida\n"
+                                            "Cantidad: $cantidad | Precio: \$${precio.toString()}",
+                                            style: const TextStyle(height: 1.4),
+                                          ),
+                                        ),
+                                        // ✅ Ocultar/Mostrar botón de EDICIÓN (SOLO ADMIN)
+                                        trailing: isAdmin
+                                            ? IconButton( 
+                                                icon: const Icon(Icons.edit,
+                                                    color: Colors.blueAccent),
+                                                onPressed: () => _editarInsumo(insumo),
+                                              )
+                                            : null, // No mostrar nada si no es administrador
+                                      ),
+                                    );
+                                  },
                                 ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    "Categoría: $categoria\n"
-                                    "Medida: $medida\n"
-                                    "Cantidad: $cantidad | Precio: \$${precio.toString()}",
-                                    style: const TextStyle(height: 1.4),
-                                  ),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.edit,
-                                      color: Colors.blueAccent),
-                                  onPressed: () => _editarInsumo(insumo),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
                       ),
                     ),
                   ],

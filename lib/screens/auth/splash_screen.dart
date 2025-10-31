@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 import 'package:inventivo/screens/dashboard/admin_dashboar.dart';
-import 'package:inventivo/screens/dashboard/trabajador_dashboard.dart';
 import 'package:inventivo/screens/auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -42,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const TrabajadorDashboard(),
+            builder: (_) => AdminDashboard(idEmpresa: idEmpresa),
           ),
         );
       }
