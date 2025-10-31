@@ -13,65 +13,152 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLargeScreen = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
+      backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
-        title: const Text("Panel Administrador"),
+        title: const Text(
+          "Panel Administrador",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
         actions: const [LogoutButton()],
       ),
       body: Center(
-        child: SingleChildScrollView( 
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "Bienvenido Administrador ",
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            width: isLargeScreen ? 500 : double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.admin_panel_settings,
+                    color: Color(0xFF2E7D32), size: 70),
+                const SizedBox(height: 10),
+                const Text(
+                  "Bienvenido Administrador",
+                  style: TextStyle(
+                    color: Color(0xFF2E7D32),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 26,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Selecciona el módulo que deseas gestionar",
+                  style: TextStyle(color: Colors.black54, fontSize: 15),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
 
-              // 🔹 Lista de trabajadores
-              ElevatedButton.icon(
-                icon: const Icon(Icons.people),
-                label: const Text("Modulo trabajadores"),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ListaTrabajadores(idEmpresa: idEmpresa),
-                    ),
-                  );
-                },
-              ),
+                // 🌿 BOTONES PRINCIPALES CON NUEVO ESTILO
+                _buildModuleButton(
+                  context,
+                  icon: Icons.people_outline,
+                  label: "Módulo Trabajadores",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ListaTrabajadores(idEmpresa: idEmpresa),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 15),
 
-              // 🔹 Listar insumos
-              ElevatedButton.icon(
-                icon: const Icon(Icons.inventory),
-                label: const Text("Modulo de Insumos"),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>  InsumosPage(),
-                    ),
-                  );
-                },
-              ),
-              // 🔹 Plantas
-              ElevatedButton.icon(
-                icon: const Icon(Icons.local_florist),
-                label: const Text("Modulo de Plantas"),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PlantasPage(),
-                    ),
-                  );
-                },
-              ),
-            ],
+                _buildModuleButton(
+                  context,
+                  icon: Icons.inventory_2_outlined,
+                  label: "Módulo de Insumos",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InsumosPage(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 15),
+
+                _buildModuleButton(
+                  context,
+                  icon: Icons.local_florist_outlined,
+                  label: "Módulo de Plantas",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PlantasPage(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 15),
+                const SizedBox(height: 30),
+                const Divider(),
+                const SizedBox(height: 10),
+                const Text(
+                  "Inventivo 🌱 - Gestión Inteligente para Viveros",
+                  style: TextStyle(color: Colors.black54, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  // 🌿 Método para crear botones uniformes
+  Widget _buildModuleButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.white, size: 24),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          shadowColor: Colors.black.withOpacity(0.2),
+          elevation: 5,
+        ),
+        onPressed: onPressed,
       ),
     );
   }
