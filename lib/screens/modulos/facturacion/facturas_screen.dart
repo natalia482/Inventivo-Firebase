@@ -82,7 +82,7 @@ class _FacturasScreenState extends State<FacturasScreen> {
         cargarFacturas();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Error al eliminar factura')),
+          const SnackBar(content: Text(' Error al eliminar factura')),
         );
       }
     }
@@ -268,7 +268,7 @@ class _CrearFacturaScreenState extends State<CrearFacturaScreen> {
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ ${result['message']}')),
+        SnackBar(content: Text(' ${result['message']}')),
       );
     }
   }

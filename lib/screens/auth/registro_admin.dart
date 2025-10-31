@@ -64,7 +64,7 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Administrador y empresa creados.\nID Usuario: $idUsuario\nID Empresa: $idEmpresa",
+              "Administrador y empresa creados.",
             ),
             backgroundColor: Colors.green,
           ),

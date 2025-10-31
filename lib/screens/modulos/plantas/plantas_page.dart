@@ -37,7 +37,7 @@ class _PlantasPageState extends State<PlantasPage> {
     }
   }
 
-  // 🔹 Agregar o editar planta
+  // 
   Future<void> _mostrarDialogoPlanta({Planta? planta}) async {
     final nombreCtrl = TextEditingController(text: planta?.nombrePlantas ?? '');
     final bolsaCtrl = TextEditingController(text: planta?.numeroBolsa ?? '');
@@ -54,7 +54,7 @@ class _PlantasPageState extends State<PlantasPage> {
             children: [
               TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: "Nombre")),
               TextField(controller: bolsaCtrl, decoration: const InputDecoration(labelText: "Número Bolsa")),
-              TextField(controller: precioCtrl, decoration: const InputDecoration(labelText: "Precio")),
+              TextField(controller: precioCtrl, decoration: const InputDecoration(labelText: "Precio de venta")),
               TextField(controller: categoriaCtrl, decoration: const InputDecoration(labelText: "Categoría")),
               TextField(controller: stockCtrl, decoration: const InputDecoration(labelText: "Cantidad")),
             ],

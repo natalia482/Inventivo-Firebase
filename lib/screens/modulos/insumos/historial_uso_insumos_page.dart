@@ -14,34 +14,60 @@ class HistorialUsoInsumosPage extends StatefulWidget {
 class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
   List<dynamic> actividades = [];
   bool isLoading = true;
+  int? idEmpresa; // ✅ Nuevo: Almacena el ID de la empresa
 
   @override
   void initState() {
     super.initState();
-    cargarActividades();
+    _cargarDatosIniciales(); // ✅ Llama a la función para obtener el ID antes de listar
+  }
+
+  // ✅ Nuevo: Obtiene el ID del usuario/empresa
+  Future<void> _cargarDatosIniciales() async {
+    final session = SessionManager();
+    final user = await session.getUser();
+    
+    // Asignar el ID de la empresa
+    if (user != null && user['id_empresa'] != null) {
+      idEmpresa = int.tryParse(user['id_empresa'].toString());
+    }
+    cargarActividades(); // Llama a cargar actividades después de obtener el ID
   }
 
   Future<void> cargarActividades() async {
+    if (idEmpresa == null) {
+      setState(() => isLoading = false);
+      debugPrint("⚠️ No se pudo cargar actividades: Falta idEmpresa.");
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
-      final response = await http.get(Uri.parse(ApiConfig.listarUsoInsumos));
+      // ✅ CRÍTICO: Cambiamos a POST para enviar el id_empresa para filtrar
+      final response = await http.post(
+        Uri.parse(ApiConfig.listarUsoInsumos),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"id_empresa": idEmpresa}), // Enviamos el filtro al backend
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           setState(() {
-            actividades = data['data'];
+            actividades = data['data'] ?? [];
             isLoading = false;
           });
         } else {
+          debugPrint("Error backend: ${data['message']}");
           setState(() => isLoading = false);
         }
       } else {
+        debugPrint("Error HTTP: ${response.statusCode}");
         setState(() => isLoading = false);
       }
     } catch (e) {
-      debugPrint("Error al cargar actividades: $e");
+      debugPrint("Excepción al cargar actividades: $e");
       setState(() => isLoading = false);
     }
   }
@@ -86,6 +112,9 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
     );
   }
 }
+
+// La lógica de RegistrarActividadPopup ya estaba bien diseñada para cargar insumos por empresa
+// No necesita cambios, ya que lee idEmpresa desde la sesión y lo envía por POST a ApiConfig.listarInsumos.
 
 class RegistrarActividadPopup extends StatefulWidget {
   final VoidCallback onRegistrada;

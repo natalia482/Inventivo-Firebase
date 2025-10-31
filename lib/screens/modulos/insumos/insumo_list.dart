@@ -193,13 +193,12 @@ class _InsumosPageState extends State<InsumosPage> {
 
   // 🔹 Popup para editar insumo
   Future<void> _editarInsumo(dynamic insumo) async {
-  String? medidaEdit = insumo["medida"];
+  String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
   String? categoriaEdit =
       categorias.contains(insumo["categoria"]) ? insumo["categoria"] : "Otro";
 
   final nombreCtrl = TextEditingController(text: insumo["nombre_insumo"]);
-  final categoriaOtroCtrl =
-      TextEditingController(text: categoriaEdit == "Otro" ? insumo["categoria"] : "");
+  final categoriaOtroCtrl = TextEditingController(text: categoriaEdit == "Otro" ? insumo["categoria"] : "");
   final precioCtrl = TextEditingController(text: insumo["precio"].toString());
   final cantidadCtrl = TextEditingController(text: insumo["cantidad"].toString());
 
