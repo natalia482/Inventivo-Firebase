@@ -1,12 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 
 class ListaTrabajadores extends StatefulWidget {
   final int idEmpresa;
-
   const ListaTrabajadores({super.key, required this.idEmpresa});
 
   @override
@@ -16,6 +15,7 @@ class ListaTrabajadores extends StatefulWidget {
 class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   List trabajadores = [];
   bool isLoading = true;
+  String filtro = '';
   final SessionManager _session = SessionManager();
 
   @override
@@ -32,7 +32,6 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data is Map && data.containsKey('data')) {
           setState(() {
             trabajadores = data['data'] ?? [];
@@ -64,7 +63,10 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
         final data = jsonDecode(response.body);
         if (data["success"] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Estado cambiado a $nuevoEstado")),
+            SnackBar(
+              content: Text("Estado cambiado a $nuevoEstado"),
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
           );
           obtenerTrabajadores();
         }
@@ -80,7 +82,6 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
       "¿Eliminar trabajador?",
       "Esta acción no se puede deshacer.",
     );
-
     if (!confirmar) return;
 
     try {
@@ -93,7 +94,10 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
       final data = jsonDecode(response.body);
       if (data["success"] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Trabajador eliminado correctamente")),
+          const SnackBar(
+            content: Text("Trabajador eliminado correctamente"),
+            backgroundColor: Colors.redAccent,
+          ),
         );
         obtenerTrabajadores();
       }
@@ -107,11 +111,23 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
     return await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(titulo),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(mensaje),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Eliminar")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child:
+                const Text("Cancelar", style: TextStyle(color: Colors.redAccent)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Eliminar"),
+          ),
         ],
       ),
     );
@@ -132,58 +148,38 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
       builder: (context) {
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text("Registrar Trabajador"),
             content: SingleChildScrollView(
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextFormField(
-                      controller: _nombre,
-                      decoration: const InputDecoration(labelText: "Nombre"),
-                      validator: (v) => v!.isEmpty ? "Ingrese el nombre" : null,
-                    ),
-                    TextFormField(
-                      controller: _apellido,
-                      decoration: const InputDecoration(labelText: "Apellido"),
-                      validator: (v) => v!.isEmpty ? "Ingrese el apellido" : null,
-                    ),
-                    TextFormField(
-                      controller: _correo,
-                      decoration: const InputDecoration(labelText: "Correo"),
-                      validator: (v) =>
-                          v!.isEmpty || !v.contains('@') ? "Correo inválido" : null,
-                    ),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: "Contraseña"),
-                      validator: (v) =>
-                          v!.length < 6 ? "Debe tener al menos 6 caracteres" : null,
-                    ),
-                    TextFormField(
-                      controller: _confirmarPassword,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: "Confirmar contraseña"),
-                      validator: (v) =>
-                          v != _password.text ? "Las contraseñas no coinciden" : null,
-                    ),
+                    _buildInput(_nombre, "Nombre"),
+                    _buildInput(_apellido, "Apellido"),
+                    _buildInput(_correo, "Correo electrónico"),
+                    _buildInput(_password, "Contraseña", obscure: true),
+                    _buildInput(_confirmarPassword, "Confirmar contraseña",
+                        obscure: true),
                   ],
                 ),
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar"),
-              ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancelar",
+                      style: TextStyle(color: Colors.redAccent))),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
                 onPressed: cargando
                     ? null
                     : () async {
                         if (!_formKey.currentState!.validate()) return;
-
                         setStateDialog(() => cargando = true);
 
                         final user = await _session.getUser();
@@ -208,11 +204,18 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                           Navigator.pop(context);
                           obtenerTrabajadores();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("✅ ${data["message"]}")),
+                            SnackBar(
+                              content: Text("✅ ${data["message"]}"),
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("❌ ${data["message"] ?? "Error"}")),
+                            SnackBar(
+                              content: Text(
+                                  "❌ ${data["message"] ?? "Error al registrar"}"),
+                              backgroundColor: Colors.redAccent,
+                            ),
                           );
                         }
                       },
@@ -220,7 +223,8 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text("Registrar"),
               ),
@@ -228,6 +232,24 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
           );
         });
       },
+    );
+  }
+
+  Widget _buildInput(TextEditingController ctrl, String label,
+      {bool obscure = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextFormField(
+        controller: ctrl,
+        obscureText: obscure,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+      ),
     );
   }
 
@@ -244,38 +266,30 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
       builder: (context) {
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text("Editar Trabajador"),
             content: SingleChildScrollView(
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _nombre,
-                      decoration: const InputDecoration(labelText: "Nombre"),
-                      validator: (v) => v!.isEmpty ? "Ingrese el nombre" : null,
-                    ),
-                    TextFormField(
-                      controller: _apellido,
-                      decoration: const InputDecoration(labelText: "Apellido"),
-                      validator: (v) => v!.isEmpty ? "Ingrese el apellido" : null,
-                    ),
-                    TextFormField(
-                      controller: _correo,
-                      decoration: const InputDecoration(labelText: "Correo"),
-                      validator: (v) =>
-                          v!.isEmpty || !v.contains('@') ? "Correo inválido" : null,
-                    ),
+                    _buildInput(_nombre, "Nombre"),
+                    _buildInput(_apellido, "Apellido"),
+                    _buildInput(_correo, "Correo"),
                   ],
                 ),
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar"),
-              ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancelar",
+                      style: TextStyle(color: Colors.redAccent))),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10))),
                 onPressed: cargando
                     ? null
                     : () async {
@@ -283,7 +297,8 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                         setStateDialog(() => cargando = true);
 
                         final response = await http.post(
-                          Uri.parse("${ApiConfig.baseUrl}/usuarios/trabajador/editar_trabajador.php"),
+                          Uri.parse(
+                              "${ApiConfig.baseUrl}/usuarios/trabajador/editar_trabajador.php"),
                           headers: {"Content-Type": "application/json"},
                           body: jsonEncode({
                             "id": trabajador["id"],
@@ -300,11 +315,16 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                           Navigator.pop(context);
                           obtenerTrabajadores();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("✅ ${data["message"]}")),
+                            SnackBar(
+                                content: Text("✅ ${data["message"]}"),
+                                backgroundColor: const Color(0xFF2E7D32)),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("❌ ${data["message"] ?? "Error al editar"}")),
+                            SnackBar(
+                                content: Text(
+                                    "❌ ${data["message"] ?? "Error al editar"}"),
+                                backgroundColor: Colors.redAccent),
                           );
                         }
                       },
@@ -312,7 +332,8 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text("Guardar"),
               ),
@@ -326,88 +347,133 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
-        title: const Text("Gestión de Trabajadores"),
-        backgroundColor: Colors.white,
+        title: const Text("Gestión de Trabajadores",
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF2E7D32),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: TextButton.icon(
-              icon: const Icon(Icons.add, color: Color.fromARGB(255, 48, 105, 58)),
-              label: const Text(
-                "Agregar Trabajador ",
-                style: TextStyle(
-                    color: Color.fromARGB(255, 62, 153, 89),
-                    fontWeight: FontWeight.bold),
-              ),
-              onPressed: () => mostrarPopupRegistro(),
-            ),
+          TextButton.icon(
+            onPressed: mostrarPopupRegistro,
+            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+            label: const Text("Registrar trabajador",
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : trabajadores.isEmpty
-              ? const Center(child: Text("No hay trabajadores registrados"))
-              : ListView.builder(
-                  itemCount: trabajadores.length,
-                  itemBuilder: (context, index) {
-                    final trabajador = trabajadores[index];
-                    final estado = trabajador["estado"]?.toUpperCase() ?? "ACTIVO";
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: "Buscar trabajador",
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (val) {
+                          setState(() => filtro = val);
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: obtenerTrabajadores,
+                        color: const Color(0xFF2E7D32),
+                        child: ListView.builder(
+                          itemCount: trabajadores.length,
+                          itemBuilder: (context, index) {
+                            final trabajador = trabajadores[index];
+                            final estado =
+                                trabajador["estado"]?.toUpperCase() ?? "ACTIVO";
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              estado == "ACTIVO" ? Colors.green : Colors.red,
-                          child: const Icon(Icons.person, color: Colors.white),
-                        ),
-                        title: Text("${trabajador["nombre"]} ${trabajador["apellido"]}"),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Correo: ${trabajador["correo"]}"),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Estado: $estado",
-                              style: TextStyle(
-                                color: estado == "ACTIVO" ? Colors.green : Colors.red,
-                                fontWeight: FontWeight.bold,
+                            return Card(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15)),
+                              margin: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 12),
+                              elevation: 4,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: estado == "ACTIVO"
+                                      ? Colors.green
+                                      : Colors.red,
+                                  child: const Icon(Icons.person,
+                                      color: Colors.white),
+                                ),
+                                title: Text(
+                                  "${trabajador["nombre"]} ${trabajador["apellido"]}",
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    "Correo: ${trabajador["correo"]}\nEstado: $estado",
+                                    style: const TextStyle(height: 1.4),
+                                  ),
+                                ),
+                                trailing: Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit,
+                                          color: Colors.blueAccent),
+                                      onPressed: () =>
+                                          mostrarPopupEditar(trabajador),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        estado == "ACTIVO"
+                                            ? Icons.toggle_on
+                                            : Icons.toggle_off,
+                                        color: estado == "ACTIVO"
+                                            ? Colors.green
+                                            : Colors.red,
+                                        size: 36,
+                                      ),
+                                      onPressed: () => cambiarEstado(
+                                          trabajador["id"], estado),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.redAccent),
+                                      onPressed: () =>
+                                          eliminarTrabajador(trabajador["id"]),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => mostrarPopupEditar(trabajador),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                estado == "ACTIVO"
-                                    ? Icons.toggle_on
-                                    : Icons.toggle_off,
-                                color: estado == "ACTIVO"
-                                    ? Colors.green
-                                    : Colors.red,
-                                size: 36,
-                              ),
-                              onPressed: () =>
-                                  cambiarEstado(trabajador["id"], estado),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => eliminarTrabajador(trabajador["id"]),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 }

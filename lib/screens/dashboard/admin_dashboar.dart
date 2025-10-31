@@ -26,7 +26,14 @@ class AdminDashboard extends StatelessWidget {
           ),
         ),
         backgroundColor: const Color(0xFF2E7D32),
-        actions: const [LogoutButton()],
+        elevation: 4,
+        actions: const [
+          // ✅ Botón de cerrar sesión en la esquina superior derecha
+          Padding(
+            padding: EdgeInsets.only(right: 12.0),
+            child: LogoutButton(),
+          ),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -68,7 +75,7 @@ class AdminDashboard extends StatelessWidget {
                 ),
                 const SizedBox(height: 30),
 
-                // 🌿 BOTONES PRINCIPALES CON NUEVO ESTILO
+                // 🌿 BOTONES PRINCIPALES
                 _buildModuleButton(
                   context,
                   icon: Icons.people_outline,
@@ -113,7 +120,7 @@ class AdminDashboard extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 15),
+
                 const SizedBox(height: 30),
                 const Divider(),
                 const SizedBox(height: 10),
