@@ -22,11 +22,12 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
   final TextEditingController direccionEmpresaController = TextEditingController();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   Future<void> registrarAdministrador() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ Validar que las contraseñas coincidan antes de enviar
     if (passwordController.text.trim() != confirpasswordController.text.trim()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -58,19 +59,13 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data["success"] == true) {
-        final idUsuario = data["id_usuario"];
-        final idEmpresa = data["id_empresa"];
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Administrador y empresa creados.",
-            ),
+          const SnackBar(
+            content: Text("✅ Administrador y empresa creados correctamente."),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Limpiar los campos
         nombreController.clear();
         apellidoController.clear();
         correoController.clear();
@@ -101,85 +96,222 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLargeScreen = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Registrar Administrador")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // 🏢 Datos de la empresa
-              TextFormField(
-                controller: nombreEmpresaController,
-                decoration: const InputDecoration(labelText: "Nombre de la empresa"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el nombre de la empresa" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: nitEmpresaController,
-                decoration: const InputDecoration(labelText: "NIT de la empresa"),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el NIT de la empresa" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: direccionEmpresaController,
-                decoration: const InputDecoration(labelText: "Dirección de la empresa"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese la dirección de la empresa" : null,
-              ),
-              const SizedBox(height: 20),
+      backgroundColor: const Color(0xFFEFF7EE),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            width: isLargeScreen ? 520 : double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 🌿 Encabezado visual
+                  const Icon(Icons.eco, color: Color(0xFF2E7D32), size: 70),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Registro de Administrador",
+                    style: TextStyle(
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Crea una cuenta para gestionar tu empresa",
+                    style: TextStyle(color: Colors.black54, fontSize: 15),
+                  ),
+                  const SizedBox(height: 25),
 
-              // 👤 Datos del administrador
-              TextFormField(
-                controller: nombreController,
-                decoration: const InputDecoration(labelText: "Nombre"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el nombre" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: apellidoController,
-                decoration: const InputDecoration(labelText: "Apellido"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el apellido" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: correoController,
-                decoration: const InputDecoration(labelText: "Correo"),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el correo" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "Contraseña"),
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese la contraseña" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: confirpasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "Confirmar contraseña"),
-                validator: (value) =>
-                    value!.isEmpty ? "Confirme la contraseña" : null,
-              ),
-              const SizedBox(height: 20),
+                  // 🏢 Datos de empresa
+                  const Text(
+                    "Información de la empresa",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: nombreEmpresaController,
+                    decoration: const InputDecoration(
+                      labelText: "Nombre de la empresa",
+                      prefixIcon: Icon(Icons.business, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) =>
+                        v!.isEmpty ? "Ingrese el nombre de la empresa" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: nitEmpresaController,
+                    decoration: const InputDecoration(
+                      labelText: "NIT de la empresa",
+                      prefixIcon: Icon(Icons.confirmation_number, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v!.isEmpty ? "Ingrese el NIT" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: direccionEmpresaController,
+                    decoration: const InputDecoration(
+                      labelText: "Dirección de la empresa",
+                      prefixIcon: Icon(Icons.location_on, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? "Ingrese la dirección" : null,
+                  ),
 
-              ElevatedButton(
-                onPressed: _isLoading ? null : registrarAdministrador,
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Registrar Administrador"),
+                  const SizedBox(height: 25),
+
+                  // 👤 Datos personales
+                  const Text(
+                    "Datos del administrador",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  TextFormField(
+                    controller: nombreController,
+                    decoration: const InputDecoration(
+                      labelText: "Nombre",
+                      prefixIcon: Icon(Icons.person, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? "Ingrese el nombre" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: apellidoController,
+                    decoration: const InputDecoration(
+                      labelText: "Apellido",
+                      prefixIcon: Icon(Icons.person_outline, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? "Ingrese el apellido" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: correoController,
+                    decoration: const InputDecoration(
+                      labelText: "Correo electrónico",
+                      prefixIcon: Icon(Icons.email_outlined, color: Colors.green),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) => v!.isEmpty ? "Ingrese el correo" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: "Contraseña",
+                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.green),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? "Ingrese la contraseña" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: confirpasswordController,
+                    obscureText: _obscureConfirmPassword,
+                    decoration: InputDecoration(
+                      labelText: "Confirmar contraseña",
+                      prefixIcon:
+                          const Icon(Icons.lock_person_outlined, color: Colors.green),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () => setState(
+                            () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? "Confirme la contraseña" : null,
+                  ),
+                  const SizedBox(height: 30),
+
+                  // 🔘 Botón de registro
+                  _isLoading
+                      ? const CircularProgressIndicator(color: Colors.green)
+                      : SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            onPressed: registrarAdministrador,
+                            child: const Text(
+                              "Registrar Administrador",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                  const SizedBox(height: 20),
+
+                  // 🔙 Enlace para volver al login
+                  TextButton.icon(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF2E7D32)),
+                    label: const Text(
+                      "Volver al inicio de sesión",
+                      style: TextStyle(
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
