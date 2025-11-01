@@ -87,7 +87,7 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
       appBar: AppBar(
         title: const Text(
           "Historial de Uso de Insumos",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF8FAF8)),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF2E7D32),

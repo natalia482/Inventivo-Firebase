@@ -27,7 +27,6 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   void initState() {
     super.initState();
     _loadCurrentUserAndFetch();
-    
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -58,7 +57,6 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   Future<void> obtenerTrabajadores({String filtro = ''}) async {
     setState(() => isLoading = true);
     try {
-      // ✅ MODIFICADO: Llama a la API con id_sede
       final response = await http.get(
         Uri.parse(ApiConfig.obtenerPersonal(widget.idSede, filtro: filtro)),
       );
@@ -126,7 +124,6 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
     if (currentUserId == null) return;
 
     try {
-      // ✅ ENVÍA ID DE CREADOR Y ID DE SEDE PARA AUDITORÍA
       final response = await http.post(
         Uri.parse(ApiConfig.eliminarTrabajador),
         headers: {"Content-Type": "application/json"},
@@ -477,15 +474,23 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                     ),
                     Expanded(
                       child: RefreshIndicator(
-                        onRefresh: () => obtenerTrabajadores(filtro: _searchController.text),
+                        onRefresh: () => obtenerTrabajadores(filtro: _filtroActual),
                         color: const Color(0xFF2E7D32),
-                        child: ListView.builder(
-                          itemCount: trabajadores.length,
-                          itemBuilder: (context, index) {
-                            final trabajador = trabajadores[index];
-                            final estado =
-                                trabajador["estado"]?.toUpperCase() ?? "ACTIVO";
-
+child: trabajadores.isEmpty
+                            ? Center(
+                                child: Text(
+                                  _filtroActual.isEmpty
+                                      ? "No hay personal registrado en esta sede."
+                                            : "No se encontraron resultados para '$_filtroActual'",
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    )
+                                      : ListView.builder(
+                                          itemCount: trabajadores.length,
+                                          itemBuilder: (context, index) {
+                                            final trabajador = trabajadores[index];
+                                            final estado =
+                                          trabajador["estado"]?.toUpperCase() ?? "ACTIVO";
                             return Card(
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15)),

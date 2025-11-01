@@ -128,6 +128,7 @@ class _RemisionesScreenState extends State<RemisionesScreen> {
                             child: const Icon(Icons.receipt, color: Colors.white),
                           ),
                           title: Text(
+                            // Si el número de factura no se corrige en el modelo, seguirá apareciendo Remisión #
                             'Remisión #${remision.numeroFactura}', 
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
@@ -607,7 +608,10 @@ class _DetalleRemisionScreenState extends State<DetalleRemisionScreen> {
                       final detalle = detalles[index];
                       return Card(
                         child: ListTile(
-                          title: Text(detalle.nombreProducto ?? 'Producto'),
+                          // La corrección aquí nos ayuda a ver si el nombre del producto es el problema:
+                          title: Text(
+                            detalle.nombreProducto ?? 'Producto sin nombre (ID: ${detalle.idProducto})',
+                          ),
                           subtitle: Text(
                             'Cantidad: ${detalle.cantidad} x \$${detalle.precioUnitario.toStringAsFixed(2)}',
                           ),

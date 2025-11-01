@@ -1,10 +1,10 @@
 class Remision {
   final int? id;
   final String numeroFactura;
-  final int idSede; // Modificado (no nullable)
-  final int idVendedor; // Modificado (no nullable)
-  final double total;
+  final int idSede; // Modificado
+  final int idVendedor;
   final String? fechaEmision;
+  final double total;
   final List<DetalleRemision> detalles;
 
   Remision({
@@ -12,21 +12,18 @@ class Remision {
     required this.numeroFactura,
     required this.idSede, // Modificado
     required this.idVendedor,
-    required this.total,
     this.fechaEmision,
-    this.detalles = const [],
+    required this.total,
+    required this.detalles,
   });
-  
+
   factory Remision.fromJson(Map<String, dynamic> json) {
     return Remision(
       id: int.tryParse(json['id']?.toString() ?? '0'),
-      numeroFactura: json['numero_factura'] ?? '',
-      
-      // ✅ CORRECCIÓN: Añadir '?? 0' al final para asegurar un 'int' no nulo.
+      numeroFactura: json['numero_remision']?.toString() ?? '',      // Aseguramos que los IDs se lean correctamente
       idSede: int.tryParse(json['id_sede']?.toString() ?? '0') ?? 0,
       idVendedor: int.tryParse(json['id_vendedor']?.toString() ?? '0') ?? 0,
-      
-      fechaEmision: json['fecha_emision'],
+      fechaEmision: json['fecha_emision']?.toString(), 
       total: double.tryParse(json['total']?.toString() ?? '0') ?? 0.0,
       detalles: [],
     );
@@ -34,16 +31,15 @@ class Remision {
 
   Map<String, dynamic> toJson() {
     return {
-      "numero_factura": numeroFactura.isEmpty ? null : numeroFactura,
-      "id_sede": idSede, // Modificado
-      "id_vendedor": idVendedor,
-      "total": total,
-      "detalles": detalles.map((d) => d.toJson()).toList(),
+      'numero_remision': numeroFactura.isEmpty ? null : numeroFactura,
+      'id_sede': idSede, // Modificado
+      'id_vendedor': idVendedor,
+      'total': total,
+      'detalles': detalles.map((d) => d.toJson()).toList(),
     };
   }
 }
 
-// Modelo para el Detalle de Remisión
 class DetalleRemision {
   final int? id;
   final int? idRemision; // Modificado
@@ -68,7 +64,7 @@ class DetalleRemision {
       id: int.tryParse(json['id']?.toString() ?? '0'),
       idRemision: int.tryParse(json['id_remision']?.toString() ?? '0'), // Modificado
       idProducto: int.tryParse(json['id_producto']?.toString() ?? '0') ?? 0,
-      nombreProducto: json['nombre_plantas'],
+      nombreProducto: json['nombre_plantas']?.toString(),
       cantidad: int.tryParse(json['cantidad']?.toString() ?? '0') ?? 0,
       precioUnitario: double.tryParse(json['precio_unitario']?.toString() ?? '0') ?? 0.0,
       subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
@@ -77,14 +73,13 @@ class DetalleRemision {
 
   Map<String, dynamic> toJson() {
     return {
-      "id_producto": idProducto,
-      "cantidad": cantidad,
-      "precio_unitario": precioUnitario,
+      'id_producto': idProducto,
+      'cantidad': cantidad,
+      'precio_unitario': precioUnitario,
     };
   }
 }
 
-// Modelo para Productos (Plantas) Disponibles
 class ProductoDisponible {
   final int id;
   final String nombrePlantas;
