@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 
+// --------------------------------------------------------
+// MODELO PLANTA (Actualizado para usar idSede)
+// --------------------------------------------------------
 class Planta {
   final int? id;
   final String nombrePlantas;
@@ -11,7 +14,7 @@ class Planta {
   final int stock;
   final String estado;
   final String fechaCreacion;
-  final int idEmpresa;
+  final int idSede; // Modificado
 
   Planta({
     this.id,
@@ -22,7 +25,7 @@ class Planta {
     required this.stock,
     required this.estado,
     required this.fechaCreacion,
-    required this.idEmpresa,
+    required this.idSede, // Modificado
   });
 
   factory Planta.fromJson(Map<String, dynamic> json) {
@@ -35,7 +38,7 @@ class Planta {
       stock: int.tryParse(json['stock'].toString()) ?? 0,
       estado: json['estado'] ?? 'disponible',
       fechaCreacion: json['fecha_creacion'] ?? '',
-      idEmpresa: int.tryParse(json['id_empresa']?.toString() ?? '0') ?? 0,
+      idSede: int.tryParse(json['id_sede']?.toString() ?? '0') ?? 0, // Modificado
     );
   }
 
@@ -49,25 +52,28 @@ class Planta {
       "stock": stock.toString(),
       "estado": estado,
       "fecha_creacion": fechaCreacion,
-      "id_empresa": idEmpresa.toString(),
+      "id_sede": idSede.toString(), // Modificado
     };
   }
 }
 
-// ✅ CORRECCIÓN CLAVE: Las funciones se mueven dentro de la clase para ser métodos.
+// --------------------------------------------------------
+// SERVICIO DE PLANTAS (Actualizado)
+// --------------------------------------------------------
 class PlantaService {
   
   // Listar plantas
-  Future<List<Planta>> obtenerPlantas(int idEmpresa, {String filtro = ''}) async {
+  Future<List<Planta>> obtenerPlantas(int idSede, {String filtro = ''}) async {
     try {
-      final url = Uri.parse('${ApiConfig.listarPlantas}?id_empresa=$idEmpresa');
+      // ✅ CORRECCIÓN: Llamar a ApiConfig.listarPlantas COMO UNA FUNCIÓN
+      final url = Uri.parse(ApiConfig.listarPlantas(idSede, filtro: filtro));
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
           List plantas = data['data'];
-
+          // El backend ya filtra, pero mantenemos el filtro local por si acaso
           if (filtro.isNotEmpty) {
             plantas = plantas.where((p) {
               final nombre = p['nombre_plantas'].toString().toLowerCase();
@@ -86,7 +92,7 @@ class PlantaService {
   }
 
   // AGREGAR PLANTA
-  Future<bool> registrarPlanta(Planta planta) async {
+  Future<bool> registrarPlanta(Planta planta, int idUsuario, int idSede) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.registrarPlantas),
@@ -97,7 +103,8 @@ class PlantaService {
           "precio": planta.precio.toString(),
           "categoria": planta.categoria,
           "stock": planta.stock.toString(),
-          "id_empresa": planta.idEmpresa.toString(),
+          "id_sede": planta.idSede.toString(), // Modificado
+          "id_usuario": idUsuario.toString(),// Para Auditoría (PENDIENTE)
         }),
       );
       final data = jsonDecode(response.body);
@@ -109,7 +116,7 @@ class PlantaService {
   }
 
   // ACTUALIZAR PLANTA
-  Future<bool> actualizarPlanta(Planta planta) async {
+  Future<bool> actualizarPlanta(Planta planta, int idUsuario, int idSede) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.editarPlantas),
@@ -122,6 +129,8 @@ class PlantaService {
           "categoria": planta.categoria,
           "stock": planta.stock,
           "estado": planta.estado,
+          "id_sede": planta.idSede, // Modificado
+          "id_usuario": idUsuario, // Para auditoría
         }),
       );
 
@@ -141,12 +150,16 @@ class PlantaService {
   }
 
   // Eliminar planta
-  Future<bool> eliminarPlanta(int id) async {
+  Future<bool> eliminarPlanta(int id, int idUsuario, int idSede ) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.eliminarPlantas),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id}),
+        body: jsonEncode({
+          'id': id,
+          'id_usuario': idUsuario, // Para auditoría
+          'id_sede': idSede // Para auditoría
+          }),
       );
 
       if (response.statusCode == 200) {

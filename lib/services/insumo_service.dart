@@ -4,12 +4,13 @@ import 'package:inventivo/core/constants/api_config.dart';
 import '../models/insumo.dart';
 
 class InsumoService {
+  
   Future<bool> registrarInsumo(Insumo insumo) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.registrarInsumo),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(insumo.toJson()),
+        body: jsonEncode(insumo.toJson()), // toJson() ya envía idSede
       );
 
       final data = jsonDecode(response.body);
@@ -20,14 +21,15 @@ class InsumoService {
     }
   }
 
-  Future<List<Insumo>> listarInsumos() async {
+  Future<List<Insumo>> listarInsumos(int idSede, {String? filtro}) async {
     try {
-      final response = await http.get(Uri.parse(ApiConfig.listarInsumos));
+      final url = ApiConfig.listarInsumos(idSede, filtro: filtro);
+      final response = await http.get(Uri.parse(url));
       final data = jsonDecode(response.body);
 
-      if (data['success'] == true && data['insumos'] != null) {
+      if (data['success'] == true && data['data'] != null) {
         return List<Insumo>.from(
-          data['insumos'].map((i) => Insumo.fromJson(i)),
+          data['data'].map((i) => Insumo.fromJson(i)),
         );
       } else {
         return [];

@@ -10,6 +10,7 @@ class LogoutButton extends StatelessWidget {
 
     return IconButton(
       icon: const Icon(Icons.logout),
+      style: IconButton.styleFrom(foregroundColor: Colors.white),
       tooltip: 'Cerrar sesión',
       onPressed: () async {
         await session.logout();

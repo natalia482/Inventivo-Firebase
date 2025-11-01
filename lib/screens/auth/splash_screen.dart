@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 import 'package:inventivo/screens/dashboard/admin_dashboar.dart';
+import 'package:inventivo/screens/dashboard/trabajador_dashboard.dart';
 import 'package:inventivo/screens/auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -27,21 +28,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (usuario != null) {
       final rol = usuario['rol'];
-      final idEmpresa = int.tryParse(usuario['id_empresa'].toString()) ?? 0;
+      // id_empresa (para el dashboard) y id_sede (para filtrar) están en la sesión
+      final idSede = int.tryParse(usuario['id_empresa'].toString()) ?? 0;
 
-      if (rol == 'ADMINISTRADOR') {
-        // 🚀 Navega directamente al dashboard con el parámetro
+      if (rol == 'PROPIETARIO' || rol == 'ADMINISTRADOR') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => AdminDashboard(idEmpresa: idEmpresa),
+            builder: (_) => AdminDashboard(),
           ),
         );
-      } else {
+      } else { // Asumimos que es TRABAJADOR
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => AdminDashboard(idEmpresa: idEmpresa),
+            builder: (_) => const TrabajadorDashboard(),
           ),
         );
       }

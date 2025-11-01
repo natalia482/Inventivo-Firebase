@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 
 class ListaTrabajadores extends StatefulWidget {
-  final int idEmpresa;
-  const ListaTrabajadores({super.key, required this.idEmpresa});
+  final int idSede; // ✅ MODIFICADO: Recibe id_sede
+  const ListaTrabajadores({super.key, required this.idSede});
 
   @override
   State<ListaTrabajadores> createState() => _ListaTrabajadoresState();
@@ -15,24 +15,57 @@ class ListaTrabajadores extends StatefulWidget {
 class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   List trabajadores = [];
   bool isLoading = true;
-  String filtro = '';
   final SessionManager _session = SessionManager();
+  
+  String? currentUserRole; // Rol del usuario logueado (PROPIETARIO/ADMINISTRADOR)
+  int? currentUserId; // ✅ ID del usuario que realiza la acción (Para auditoría)
+  
+  final TextEditingController _searchController = TextEditingController();
+  String _filtroActual = '';
 
   @override
   void initState() {
     super.initState();
-    obtenerTrabajadores();
+    _loadCurrentUserAndFetch();
+    
+    _searchController.addListener(_onSearchChanged);
   }
 
-  Future<void> obtenerTrabajadores() async {
+  // Carga el rol del usuario actual ANTES de listar
+  Future<void> _loadCurrentUserAndFetch() async {
+    final user = await _session.getUser();
+    currentUserRole = user?['rol']?.toUpperCase(); 
+    currentUserId = int.tryParse(user?['id']?.toString() ?? '0'); // ✅ Obtener ID
+    obtenerTrabajadores(); 
+  }
+  
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  void _onSearchChanged() {
+    if (_searchController.text != _filtroActual) {
+      setState(() {
+        _filtroActual = _searchController.text;
+      });
+      obtenerTrabajadores(filtro: _filtroActual);
+    }
+  }
+
+  Future<void> obtenerTrabajadores({String filtro = ''}) async {
+    setState(() => isLoading = true);
     try {
+      // ✅ MODIFICADO: Llama a la API con id_sede
       final response = await http.get(
-        Uri.parse(ApiConfig.obtenerTrabajadores(widget.idEmpresa)),
+        Uri.parse(ApiConfig.obtenerPersonal(widget.idSede, filtro: filtro)),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data is Map && data.containsKey('data')) {
+        if (data is Map && data['status'] == 'success' && data.containsKey('data')) {
           setState(() {
             trabajadores = data['data'] ?? [];
             isLoading = false;
@@ -53,10 +86,16 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   Future<void> cambiarEstado(int id, String estadoActual) async {
     final nuevoEstado = estadoActual == "ACTIVO" ? "INACTIVO" : "ACTIVO";
     try {
+      // ✅ ENVÍA ID DE CREADOR Y ID DE SEDE PARA AUDITORÍA
       final response = await http.post(
         Uri.parse(ApiConfig.cambiarEstado),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": id, "estado": nuevoEstado}),
+        body: jsonEncode({
+          "id": id, 
+          "estado": nuevoEstado,
+          "id_sede": widget.idSede, 
+          "id_usuario_creador": currentUserId // ID del que hace la acción
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -68,7 +107,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
               backgroundColor: const Color(0xFF2E7D32),
             ),
           );
-          obtenerTrabajadores();
+          obtenerTrabajadores(filtro: _filtroActual);
         }
       }
     } catch (e) {
@@ -84,11 +123,18 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
     );
     if (!confirmar) return;
 
+    if (currentUserId == null) return;
+
     try {
+      // ✅ ENVÍA ID DE CREADOR Y ID DE SEDE PARA AUDITORÍA
       final response = await http.post(
         Uri.parse(ApiConfig.eliminarTrabajador),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": id}),
+        body: jsonEncode({
+          "id": id,
+          "id_sede": widget.idSede,
+          "id_usuario_creador": currentUserId // ID del que hace la acción
+        }),
       );
 
       final data = jsonDecode(response.body);
@@ -99,7 +145,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
             backgroundColor: Colors.redAccent,
           ),
         );
-        obtenerTrabajadores();
+        obtenerTrabajadores(filtro: _filtroActual);
       }
     } catch (e) {
       debugPrint("Error: $e");
@@ -108,7 +154,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
 
   Future<bool> mostrarConfirmacion(
       BuildContext context, String titulo, String mensaje) async {
-    return await showDialog(
+    bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -131,6 +177,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
         ],
       ),
     );
+    return confirm ?? false;
   }
 
   /// 🔹 Popup para registrar trabajador
@@ -141,6 +188,11 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
     final _correo = TextEditingController();
     final _password = TextEditingController();
     final _confirmarPassword = TextEditingController();
+    
+    // Lógica de Roles:
+    final bool esPropietario = (currentUserRole == 'PROPIETARIO');
+    String rolSeleccionado = 'TRABAJADOR'; // Valor por defecto
+    
     bool cargando = false;
 
     showDialog(
@@ -149,7 +201,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text("Registrar Trabajador"),
+            title: const Text("Registrar Personal"),
             content: SingleChildScrollView(
               child: Form(
                 key: _formKey,
@@ -160,7 +212,34 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                     _buildInput(_correo, "Correo electrónico"),
                     _buildInput(_password, "Contraseña", obscure: true),
                     _buildInput(_confirmarPassword, "Confirmar contraseña",
-                        obscure: true),
+                        obscure: true, validator: (v) { 
+                          if (v != _password.text) return "Las contraseñas no coinciden";
+                          return null;
+                        }),
+                    
+                    // Selector de Rol (Solo para Propietarios)
+                    if (esPropietario)
+                      DropdownButtonFormField<String>(
+                        value: rolSeleccionado,
+                        decoration: const InputDecoration(labelText: "Rol del nuevo usuario"),
+                        items: const [
+                          DropdownMenuItem(value: "TRABAJADOR", child: Text("Trabajador")),
+                          DropdownMenuItem(value: "ADMINISTRADOR", child: Text("Administrador")),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setStateDialog(() {
+                              rolSeleccionado = value;
+                            });
+                          }
+                        },
+                      )
+                    else
+                      const ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text("Rol Asignado: TRABAJADOR"),
+                        subtitle: Text("Los administradores solo pueden crear trabajadores."),
+                      ),
                   ],
                 ),
               ),
@@ -172,28 +251,26 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                       style: TextStyle(color: Colors.redAccent))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
+                    backgroundColor: const Color(0xFF2E7D32),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10))),
                 onPressed: cargando
                     ? null
                     : () async {
                         if (!_formKey.currentState!.validate()) return;
                         setStateDialog(() => cargando = true);
 
-                        final user = await _session.getUser();
-                        final idEmpresa = user?['id_empresa'] ?? widget.idEmpresa;
-
                         final response = await http.post(
-                          Uri.parse(ApiConfig.registroTrabajador),
+                          Uri.parse(ApiConfig.registroPersonal), 
                           headers: {"Content-Type": "application/json"},
                           body: jsonEncode({
                             "nombre": _nombre.text,
                             "apellido": _apellido.text,
                             "correo": _correo.text,
                             "password": _password.text,
-                            "id_empresa": idEmpresa.toString(),
+                            "id_sede": widget.idSede.toString(), // ✅ Envía id_sede
+                            "rol": rolSeleccionado, // ✅ Envía el rol
+                            "id_usuario_creador": currentUserId.toString() // ✅ Envía ID del creador
                           }),
                         );
 
@@ -236,7 +313,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
   }
 
   Widget _buildInput(TextEditingController ctrl, String label,
-      {bool obscure = false}) {
+      {bool obscure = false, FormFieldValidator<String>? validator}) { 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: TextFormField(
@@ -248,12 +325,12 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
           filled: true,
           fillColor: Colors.white,
         ),
-        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+        validator: validator ?? (v) => v!.isEmpty ? "Campo obligatorio" : null,
       ),
     );
   }
 
-  /// 🔹 Popup para editar trabajador
+  /// Popup para editar trabajador
   void mostrarPopupEditar(Map trabajador) {
     final _formKey = GlobalKey<FormState>();
     final _nombre = TextEditingController(text: trabajador["nombre"]);
@@ -297,14 +374,15 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                         setStateDialog(() => cargando = true);
 
                         final response = await http.post(
-                          Uri.parse(
-                              "${ApiConfig.baseUrl}/usuarios/trabajador/editar_trabajador.php"),
+                          Uri.parse(ApiConfig.editarTrabajador),
                           headers: {"Content-Type": "application/json"},
                           body: jsonEncode({
                             "id": trabajador["id"],
                             "nombre": _nombre.text,
                             "apellido": _apellido.text,
                             "correo": _correo.text,
+                            "id_sede": widget.idSede, // ✅ Envía id_sede
+                            "id_usuario_creador": currentUserId // ✅ Envía ID del creador
                           }),
                         );
 
@@ -346,19 +424,22 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canModify = (currentUserRole == 'PROPIETARIO' || currentUserRole == 'ADMINISTRADOR');
+
     return Scaffold(
       backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
-        title: const Text("Gestión de Trabajadores",
+        title: const Text("Gestión de Personal",
             style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF2E7D32),
         actions: [
-          TextButton.icon(
-            onPressed: mostrarPopupRegistro,
-            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            label: const Text("Registrar trabajador",
-                style: TextStyle(color: Colors.white)),
-          ),
+          if (canModify)
+            TextButton.icon(
+              onPressed: mostrarPopupRegistro,
+              icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+              label: const Text("Registrar personal",
+                  style: TextStyle(color: Colors.white)),
+            ),
         ],
       ),
       body: isLoading
@@ -383,22 +464,20 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: TextField(
+                        controller: _searchController,
                         decoration: InputDecoration(
-                          labelText: "Buscar trabajador",
+                          labelText: "Buscar personal",
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15)),
                         ),
-                        onChanged: (val) {
-                          setState(() => filtro = val);
-                        },
                       ),
                     ),
                     Expanded(
                       child: RefreshIndicator(
-                        onRefresh: obtenerTrabajadores,
+                        onRefresh: () => obtenerTrabajadores(filtro: _searchController.text),
                         color: const Color(0xFF2E7D32),
                         child: ListView.builder(
                           itemCount: trabajadores.length,
@@ -430,11 +509,11 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 6),
                                   child: Text(
-                                    "Correo: ${trabajador["correo"]}\nEstado: $estado",
+                                    "Rol: ${trabajador["rol"]}\nCorreo: ${trabajador["correo"]}\nEstado: $estado",
                                     style: const TextStyle(height: 1.4),
                                   ),
                                 ),
-                                trailing: Wrap(
+                                trailing: canModify ? Wrap( 
                                   spacing: 6,
                                   children: [
                                     IconButton(
@@ -463,7 +542,7 @@ class _ListaTrabajadoresState extends State<ListaTrabajadores> {
                                           eliminarTrabajador(trabajador["id"]),
                                     ),
                                   ],
-                                ),
+                                ) : null, 
                               ),
                             );
                           },

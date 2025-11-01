@@ -3,23 +3,27 @@ import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 
 class ChatbotService {
-  /// Envía un mensaje del usuario al backend PHP y obtiene la respuesta del bot.
-  static Future<String> enviarMensaje(String mensaje) async {
+  
+  // Llama a la API pública de consulta de plantas
+  Future<Map<String, dynamic>> searchPlantInventory({
+    required int idEmpresa,
+    required String plantName,
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.chatbot), // endpoint PHP del bot
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"mensaje": mensaje}),
+      // Construye la URL de consulta con los parámetros codificados
+      final response = await http.get(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/public/chatbot_search.php?nombre=${Uri.encodeComponent(plantName)}&id_empresa=$idEmpresa'
+        ),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data["respuesta"] ?? "Sin respuesta del bot.";
+        return jsonDecode(response.body);
       } else {
-        return "Error del servidor (${response.statusCode}).";
+        return {'success': false, 'message': 'Error de conexión HTTP: ${response.statusCode}'};
       }
     } catch (e) {
-      return "Error de conexión con el servidor: $e";
+      return {'success': false, 'message': 'Excepción de red: $e'};
     }
   }
 }

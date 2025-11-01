@@ -5,45 +5,52 @@ class AuthService {
   final ApiService _apiService = ApiService();
 
 
-//Registro administrador
-  Future<Map<String, dynamic>> registrarAdmin({
+// Registro Propietario (Reemplaza registroAdmin)
+  Future<Map<String, dynamic>> registrarPropietario({
     required String nombre,
     required String apellido,
     required String correo,
     required String password,
-  }) async {
-    final data = {
-      "nombre": nombre,
-      "apellido": apellido,
-      "correo": correo,
-      "password": password,
-      "rol": "ADMINISTRADOR"
-    };
-
-    return await _apiService.postData(ApiConfig.registroAdmin, data);
-  }
-
-  //Registro trabajador
-  Future<Map<String, dynamic>> registrarTrabajador({
-    required String nombre,
-    required String apellido,
-    required String correo,
-    required String password,
-    required String idEmpresa,
     required String nombreEmpresa,
+    required String nit,
+    required String direccionEmpresa,
+    // (Opcional) Puedes añadir latitud/longitud aquí
   }) async {
     final data = {
       "nombre": nombre,
       "apellido": apellido,
       "correo": correo,
       "password": password,
-      "id_empresa": idEmpresa,
       "nombre_empresa": nombreEmpresa,
+      "nit": nit,
+      "direccion_empresa": direccionEmpresa,
     };
 
-    return await _apiService.postData(ApiConfig.registroTrabajador, data);
+    return await _apiService.postData(ApiConfig.registroPropietario, data);
   }
-  //Login por roles
+
+  // Registro de Personal (Hecho por un Admin/Propietario logueado)
+  Future<Map<String, dynamic>> registrarPersonal({
+    required String nombre,
+    required String apellido,
+    required String correo,
+    required String password,
+    required int idSede,
+    required String rol, // 'ADMINISTRADOR' o 'TRABAJADOR'
+  }) async {
+    final data = {
+      "nombre": nombre,
+      "apellido": apellido,
+      "correo": correo,
+      "password": password,
+      "id_sede": idSede.toString(),
+      "rol": rol, 
+    };
+
+    return await _apiService.postData(ApiConfig.registroPersonal, data);
+  }
+
+  //Login por roles (Actualizado para manejar nueva respuesta)
   Future<Map<String, dynamic>> login({
     required String correo,
     required String password,
@@ -56,7 +63,7 @@ class AuthService {
       return {
         'success': true,
         'message': response['message'],
-        'usuario': response['data'], // 🔹 Reetiquetamos aquí
+        'usuario': response['data'], 
       };
     } else {
       return {
@@ -65,6 +72,4 @@ class AuthService {
       };
     }
   }
-
-  
 }

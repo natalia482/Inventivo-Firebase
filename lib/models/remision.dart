@@ -1,28 +1,31 @@
-class Factura {
+class Remision {
   final int? id;
   final String numeroFactura;
-  final int idEmpresa;
-  final int idVendedor;
-  final String? fechaEmision;
+  final int idSede; // Modificado (no nullable)
+  final int idVendedor; // Modificado (no nullable)
   final double total;
-  final List<DetalleFactura> detalles;
+  final String? fechaEmision;
+  final List<DetalleRemision> detalles;
 
-  Factura({
+  Remision({
     this.id,
     required this.numeroFactura,
-    required this.idEmpresa,
+    required this.idSede, // Modificado
     required this.idVendedor,
-    this.fechaEmision,
     required this.total,
-    required this.detalles,
+    this.fechaEmision,
+    this.detalles = const [],
   });
-
-  factory Factura.fromJson(Map<String, dynamic> json) {
-    return Factura(
+  
+  factory Remision.fromJson(Map<String, dynamic> json) {
+    return Remision(
       id: int.tryParse(json['id']?.toString() ?? '0'),
       numeroFactura: json['numero_factura'] ?? '',
-      idEmpresa: int.tryParse(json['id_empresa']?.toString() ?? '0') ?? 0,
+      
+      // ✅ CORRECCIÓN: Añadir '?? 0' al final para asegurar un 'int' no nulo.
+      idSede: int.tryParse(json['id_sede']?.toString() ?? '0') ?? 0,
       idVendedor: int.tryParse(json['id_vendedor']?.toString() ?? '0') ?? 0,
+      
       fechaEmision: json['fecha_emision'],
       total: double.tryParse(json['total']?.toString() ?? '0') ?? 0.0,
       detalles: [],
@@ -31,27 +34,28 @@ class Factura {
 
   Map<String, dynamic> toJson() {
     return {
-      'numero_factura': numeroFactura.isEmpty ? null : numeroFactura, // Si está vacío, enviar null
-      'id_empresa': idEmpresa,
-      'id_vendedor': idVendedor,
-      'total': total,
-      'detalles': detalles.map((d) => d.toJson()).toList(),
+      "numero_factura": numeroFactura.isEmpty ? null : numeroFactura,
+      "id_sede": idSede, // Modificado
+      "id_vendedor": idVendedor,
+      "total": total,
+      "detalles": detalles.map((d) => d.toJson()).toList(),
     };
   }
 }
 
-class DetalleFactura {
+// Modelo para el Detalle de Remisión
+class DetalleRemision {
   final int? id;
-  final int? idFactura;
+  final int? idRemision; // Modificado
   final int idProducto;
   final String? nombreProducto;
   final int cantidad;
   final double precioUnitario;
   final double subtotal;
 
-  DetalleFactura({
+  DetalleRemision({
     this.id,
-    this.idFactura,
+    this.idRemision, // Modificado
     required this.idProducto,
     this.nombreProducto,
     required this.cantidad,
@@ -59,10 +63,10 @@ class DetalleFactura {
     required this.subtotal,
   });
 
-  factory DetalleFactura.fromJson(Map<String, dynamic> json) {
-    return DetalleFactura(
+  factory DetalleRemision.fromJson(Map<String, dynamic> json) {
+    return DetalleRemision(
       id: int.tryParse(json['id']?.toString() ?? '0'),
-      idFactura: int.tryParse(json['id_factura']?.toString() ?? '0'),
+      idRemision: int.tryParse(json['id_remision']?.toString() ?? '0'), // Modificado
       idProducto: int.tryParse(json['id_producto']?.toString() ?? '0') ?? 0,
       nombreProducto: json['nombre_plantas'],
       cantidad: int.tryParse(json['cantidad']?.toString() ?? '0') ?? 0,
@@ -73,14 +77,14 @@ class DetalleFactura {
 
   Map<String, dynamic> toJson() {
     return {
-      'id_producto': idProducto,
-      'cantidad': cantidad,
-      'precio_unitario': precioUnitario,
-      'subtotal': subtotal,
+      "id_producto": idProducto,
+      "cantidad": cantidad,
+      "precio_unitario": precioUnitario,
     };
   }
 }
 
+// Modelo para Productos (Plantas) Disponibles
 class ProductoDisponible {
   final int id;
   final String nombrePlantas;

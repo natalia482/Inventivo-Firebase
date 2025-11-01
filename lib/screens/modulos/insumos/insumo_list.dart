@@ -15,8 +15,11 @@ class InsumosPage extends StatefulWidget {
 class _InsumosPageState extends State<InsumosPage> {
   List<dynamic> insumos = [];
   bool isLoading = true;
-  String? userRole; // ✅ NUEVO: Almacena el rol del usuario
-  int? idEmpresa;
+  String? userRole; 
+  int? idSede; // Modificado
+  int? idUsuario; // Para auditoría
+
+  final TextEditingController _searchController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nombreController = TextEditingController();
@@ -30,31 +33,55 @@ class _InsumosPageState extends State<InsumosPage> {
   final List<String> medidas = ["KG", "LB", "LITRO", "MILILITRO"];
   final List<String> categorias = ["Fertilizante", "Abono", "Matamaleza", "Otro"];
 
+  // Función para verificar y dar formato al estado del insumo
+  Map<String, dynamic> _verificarStockInsumo(double cantidad) {
+    if (cantidad <= 0) {
+      return {"mensaje": "NO DISPONIBLE. Reabastecer.", "color": Colors.red};
+    } else if (cantidad <= 20) { // Umbral de "pronto a agotarse"
+      return {"mensaje": "Pronto a agotarse.", "color": Colors.orange};
+    } else {
+      return {"mensaje": "DISPONIBLE", "color": const Color(0xFF2E7D32)};
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _loadEmpresaYListar();
+    
+    _searchController.addListener(() {
+      listarInsumos(filtro: _searchController.text); 
+    });
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEmpresaYListar() async {
     final session = SessionManager();
     final user = await session.getUser();
 
-    if (user != null && user["id_empresa"] != null) {
-      idEmpresa = user["id_empresa"];
-      userRole = user["rol"]; // ✅ Obtenemos el rol de la sesión
+    if (user != null && user["id_sede"] != null) {
+      idSede = int.tryParse(user["id_sede"].toString()); // Modificado
+      idUsuario = int.tryParse(user["id"].toString()); // Para auditoría
+      userRole = user["rol"];      
       await listarInsumos();
     } else {
       setState(() => isLoading = false);
+      //Manejar error si no hay sede
     }
   }
 
-  Future<void> listarInsumos() async {
-    if (idEmpresa == null) return;
-    final url = Uri.parse("${ApiConfig.listarInsumos}?id_empresa=$idEmpresa");
-
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
+  Future<void> listarInsumos({String? filtro}) async { 
+    if (idSede == null) return;
+    
+    // Construir la URL con el filtro
+  String url = ApiConfig.listarInsumos(idSede!, filtro: filtro);
+  final response = await http.get(Uri.parse(url));
+  if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data["success"]) {
         setState(() {
@@ -62,26 +89,85 @@ class _InsumosPageState extends State<InsumosPage> {
           isLoading = false;
         });
       }
+    } else {
+       setState(() => isLoading = false);
     }
   }
 
   void _mostrarPopupActividades() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          insetPadding: EdgeInsets.zero,
-          contentPadding: EdgeInsets.zero,
-          titlePadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.95,
-            height: MediaQuery.of(context).size.height * 0.95,
-            child: const HistorialUsoInsumosPage(),
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            insetPadding: EdgeInsets.zero,
+            contentPadding: EdgeInsets.zero,
+            titlePadding: EdgeInsets.zero,
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.95,
+              height: MediaQuery.of(context).size.height * 0.95,
+              child: const HistorialUsoInsumosPage(),
+            ),
+          );
+        },
+      );
+    }
+
+// FUNCIONALIDAD ELIMINAR PERMANENTE
+    Future<void> eliminarInsumo(int id) async {
+      bool? confirmar = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Eliminar Insumo PERMANENTEMENTE'),
+          content: const Text(
+            '⚠️ ¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE este insumo? Esta acción es irreversible.',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.blueAccent)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        ),
+      );
+    // Uso seguro: verificar si es true
+    if (confirmar == true) { 
+      try {
+        final response = await http.post(
+          Uri.parse(ApiConfig.eliminarInsumo),
+          headers: {"Content-Type": "application/json"},
+          // Enviar id_usuario y id_sede para la auditoría (Paso 4)
+          body: jsonEncode({
+            "id": id,
+            "id_usuario": idUsuario,
+            "id_sede": idSede
+            }),
         );
-      },
-    );
+
+       final data = jsonDecode(response.body);
+        if (response.statusCode == 200 && data["success"] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("✅ Insumo eliminado permanentemente.")),
+          );
+          listarInsumos(filtro: _searchController.text);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("❌ Error al eliminar insumo: ${data["message"] ?? 'Error de servidor'}")),
+          );
+        }
+      } catch (e) {
+        debugPrint("Excepción al eliminar insumo: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error de conexión al eliminar insumo.")),
+        );
+      }
+    }
   }
+
 
   void _mostrarPopupRegistro() {
     categoriaSeleccionada = null;
@@ -102,7 +188,6 @@ class _InsumosPageState extends State<InsumosPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // ... (Campos de formulario omitidos por brevedad)
                       _buildInput(nombreController, "Nombre del insumo"),
                       DropdownButtonFormField<String>(
                         value: categoriaSeleccionada,
@@ -140,7 +225,7 @@ class _InsumosPageState extends State<InsumosPage> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   onPressed: registrarInsumo,
-                  child: const Text("Guardar"),
+                  child: const Text("Guardar",style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ],
             );
@@ -149,12 +234,11 @@ class _InsumosPageState extends State<InsumosPage> {
       },
     );
   }
-
   Widget _buildInput(TextEditingController ctrl, String label,
       {TextInputType type = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: TextFormField( // Cambiado a TextFormField para usar la validación del form
+      child: TextFormField( 
         controller: ctrl,
         keyboardType: type,
         decoration: InputDecoration(
@@ -170,7 +254,7 @@ class _InsumosPageState extends State<InsumosPage> {
 
   Future<void> registrarInsumo() async {
     if (!_formKey.currentState!.validate()) return;
-    if (idEmpresa == null) return;
+    if (idSede == null || idUsuario == null) return;
 
     final categoriaFinal = categoriaSeleccionada == "Otro"
         ? categoriaOtroController.text.trim()
@@ -185,10 +269,10 @@ class _InsumosPageState extends State<InsumosPage> {
         "precio": double.tryParse(precioController.text.trim()) ?? 0,
         "medida": medidaSeleccionada,
         "cantidad": int.tryParse(cantidadController.text.trim()) ?? 0,
-        "id_empresa": idEmpresa,
-      }),
+        "id_sede": idSede, // Modificado
+        "id_sede": idSede.toString(), 
+        "id_usuario": idUsuario.toString()      }),
     );
-
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 && data["success"] == true) {
       Navigator.pop(context);
@@ -207,16 +291,18 @@ class _InsumosPageState extends State<InsumosPage> {
   }
 
   Future<void> _editarInsumo(dynamic insumo) async {
-    // ... (Lógica de edición omitida por brevedad, asume que usa isAdmin en el build)
-     String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
+    // Aseguramos que los valores sean Strings seguros para el controlador
+    String? medidaEdit = insumo["medida"]?.toString().toUpperCase();
     String? categoriaEdit =
         categorias.contains(insumo["categoria"]) ? insumo["categoria"] : "Otro";
+    String? estadoEdit = (insumo["estado"] == null || insumo["estado"] == "") ? "DISPONIBLE" : insumo["estado"];
 
-    final nombreCtrl = TextEditingController(text: insumo["nombre_insumo"]);
+    // ✅ CORRECCIÓN 1: Inicializar controladores con .toString() seguro
+    final nombreCtrl = TextEditingController(text: insumo["nombre_insumo"]?.toString() ?? '');
     final categoriaOtroCtrl =
-        TextEditingController(text: categoriaEdit == "Otro" ? insumo["categoria"] : "");
-    final precioCtrl = TextEditingController(text: insumo["precio"].toString());
-    final cantidadCtrl = TextEditingController(text: insumo["cantidad"].toString());
+        TextEditingController(text: categoriaEdit == "Otro" ? insumo["categoria"]?.toString() ?? '' : "");
+    final precioCtrl = TextEditingController(text: insumo["precio"]?.toString() ?? '');
+    final cantidadCtrl = TextEditingController(text: insumo["cantidad"]?.toString() ?? '');
 
     await showDialog(
       context: context,
@@ -255,8 +341,24 @@ class _InsumosPageState extends State<InsumosPage> {
                       });
                     },
                   ),
+                  // Dropdown para el ESTADO
+                  DropdownButtonFormField<String>(
+                    value: estadoEdit,
+                    decoration: const InputDecoration(labelText: "Estado"),
+                    items: const [
+                      DropdownMenuItem(value: "DISPONIBLE", child: Text("DISPONIBLE")),
+                      DropdownMenuItem(value: "NO DISPONIBLE", child: Text("NO DISPONIBLE")),
+                    ],
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        estadoEdit = value;
+                      });
+                    },
+                  ),
                   _buildInput(cantidadCtrl, "Cantidad", type: TextInputType.number),
                   _buildInput(precioCtrl, "Precio de compra", type: TextInputType.number),
+                  _buildInput(cantidadCtrl, "Cantidad", type: TextInputType.number),
+
                 ],
               ),
             ),
@@ -275,13 +377,17 @@ class _InsumosPageState extends State<InsumosPage> {
 
                   final response = await http.post(
                     Uri.parse(ApiConfig.editarInsumo),
+                    // ESTA ES LA LÍNEA QUE CAUSABA EL ERROR DE TIPO
                     body: {
                       "id": insumo["id"].toString(),
-                      "nombre_insumo": nombreCtrl.text,
+                      "nombre_insumo": nombreCtrl.text,       // CORREGIDO: .text
                       "categoria": categoriaFinal,
                       "medida": medidaEdit,
-                      "precio": precioCtrl.text,
-                      "cantidad": cantidadCtrl.text,
+                      "precio": precioCtrl.text,             // CORREGIDO: .text
+                      "cantidad": cantidadCtrl.text,         // CORREGIDO: .text
+                      "estado": estadoEdit,
+                      "id_sede": idSede.toString(), 
+                      "id_usuario": idUsuario.toString() 
                     },
                   );
 
@@ -292,9 +398,13 @@ class _InsumosPageState extends State<InsumosPage> {
                       const SnackBar(content: Text("Insumo actualizado correctamente")),
                     );
                     listarInsumos();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Error: ${data["message"] ?? 'Error al actualizar'}")),
+                    );
                   }
                 },
-                child: const Text("Guardar"),
+                child: const Text("Guardar",style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ],
           );
@@ -305,8 +415,7 @@ class _InsumosPageState extends State<InsumosPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAdmin = userRole == 'ADMINISTRADOR'; // ✅ Bandera de control de acceso
-
+final bool isAdmin = userRole == 'ADMINISTRADOR' || userRole == 'PROPIETARIO';
     return Scaffold(
       backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
@@ -322,7 +431,7 @@ class _InsumosPageState extends State<InsumosPage> {
                 style: TextStyle(color: Colors.white)),
           ),
           // Botón "Registrar insumo" (SOLO ADMIN)
-          if (isAdmin) // ✅ Renderizado condicional
+          if (isAdmin) 
             TextButton.icon(
               onPressed: _mostrarPopupRegistro,
               icon: const Icon(Icons.add_circle_outline, color: Colors.white),
@@ -349,9 +458,11 @@ class _InsumosPageState extends State<InsumosPage> {
                 ),
                 child: Column(
                   children: [
+                    // CAMPO DE BÚSQUEDA
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: TextField(
+                        controller: _searchController, // Usa el controller
                         decoration: InputDecoration(
                           labelText: "Buscar insumo",
                           prefixIcon: const Icon(Icons.search),
@@ -361,12 +472,11 @@ class _InsumosPageState extends State<InsumosPage> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        
                       ),
                     ),
                     Expanded(
                       child: RefreshIndicator(
-                        onRefresh: listarInsumos,
+                        onRefresh: () => listarInsumos(filtro: _searchController.text),
                         color: const Color(0xFF2E7D32),
                         child: insumos.isEmpty
                             ? const Center(child: Text("No hay insumos registrados"))
@@ -377,8 +487,11 @@ class _InsumosPageState extends State<InsumosPage> {
                                     final nombre = insumo["nombre_insumo"];
                                     final categoria = insumo["categoria"];
                                     final medida = insumo["medida"];
-                                    final cantidad = insumo["cantidad"];
+                                    final cantidad = double.tryParse(insumo["cantidad"]?.toString() ?? '0') ?? 0.0;
                                     final precio = insumo["precio"];
+                                    
+                                    // Verificar estado del stock
+                                    final stockInfo = _verificarStockInsumo(cantidad);
 
                                     return Card(
                                       shape: RoundedRectangleBorder(
@@ -387,8 +500,8 @@ class _InsumosPageState extends State<InsumosPage> {
                                           vertical: 8, horizontal: 12),
                                       elevation: 4,
                                       child: ListTile(
-                                        leading: const Icon(Icons.inventory_2,
-                                            color: Color(0xFF2E7D32), size: 35),
+                                        leading: Icon(Icons.inventory_2,
+                                            color: stockInfo["color"], size: 35),
                                         title: Text(
                                           nombre,
                                           style: const TextStyle(
@@ -396,21 +509,39 @@ class _InsumosPageState extends State<InsumosPage> {
                                         ),
                                         subtitle: Padding(
                                           padding: const EdgeInsets.only(top: 6),
-                                          child: Text(
-                                            "Categoría: $categoria\n"
-                                            "Medida: $medida\n"
-                                            "Cantidad: $cantidad | Precio: \$${precio.toString()}",
-                                            style: const TextStyle(height: 1.4),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                                Text("Categoría: $categoria"),
+                                                Text("Medida: $medida\nCantidad: ${cantidad.toStringAsFixed(2)} | Precio: \$${precio.toString()}"),
+                                                
+                                                // Mostrar mensaje de estado/alerta
+                                                Text(stockInfo["mensaje"], 
+                                                     style: TextStyle(
+                                                         fontWeight: FontWeight.bold, 
+                                                         color: stockInfo["color"]
+                                                    )), 
+                                            ],
                                           ),
                                         ),
-                                        // ✅ Ocultar/Mostrar botón de EDICIÓN (SOLO ADMIN)
+                                        // Botones de acción (SOLO ADMIN)
                                         trailing: isAdmin
-                                            ? IconButton( 
-                                                icon: const Icon(Icons.edit,
-                                                    color: Colors.blueAccent),
-                                                onPressed: () => _editarInsumo(insumo),
+                                            ? Wrap( 
+                                                spacing: 4,
+                                                children: [
+                                                  // Botón EDITAR
+                                                  IconButton(
+                                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                                    onPressed: () => _editarInsumo(insumo),
+                                                  ),
+                                                  // Botón ELIMINAR
+                                                  IconButton(
+                                                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                                                    onPressed: () => eliminarInsumo(insumo["id"]),
+                                                  ),
+                                                ],
                                               )
-                                            : null, // No mostrar nada si no es administrador
+                                            : null,
                                       ),
                                     );
                                   },

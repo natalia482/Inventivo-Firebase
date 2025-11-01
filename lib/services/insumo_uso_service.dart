@@ -9,7 +9,7 @@ class ActividadService {
     required String dosificacion,
     required String objetivo,
     required String responsable,
-    required int idEmpresa,
+    required int idSede,
   }) async {
     final response = await http.post(
       Uri.parse(ApiConfig.registrarUsoInsumo),
@@ -20,7 +20,7 @@ class ActividadService {
         "dosificacion": dosificacion,
         "objetivo": objetivo,
         "responsable": responsable,
-        "id_empresa": idEmpresa,
+        "id_empresa": idSede,
       }),
     );
 

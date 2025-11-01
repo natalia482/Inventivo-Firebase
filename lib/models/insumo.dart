@@ -4,9 +4,10 @@ class Insumo {
   final String categoria;
   final double precio;
   final String medida;
-  final int cantidad;
-  final int idEmpresa;
+  final double cantidad; // Modificado a double
+  final int idSede; // Modificado
   final String fechaRegistro;
+  final String estado; // Añadido
 
   Insumo({
     this.id,
@@ -15,8 +16,9 @@ class Insumo {
     required this.precio,
     required this.medida,
     required this.cantidad,
-    required this.idEmpresa,
+    required this.idSede, // Modificado
     required this.fechaRegistro,
+    required this.estado, // Añadido
   });
 
   factory Insumo.fromJson(Map<String, dynamic> json) {
@@ -26,9 +28,10 @@ class Insumo {
       categoria: json['categoria'] ?? '',
       precio: double.tryParse(json['precio'].toString()) ?? 0.0,
       medida: json['medida'] ?? '',
-      cantidad: int.tryParse(json['cantidad'].toString()) ?? 0,
-      idEmpresa: int.tryParse(json['id_empresa'].toString()) ?? 0,
+      cantidad: double.tryParse(json['cantidad'].toString()) ?? 0.0, // Modificado
+      idSede: int.tryParse(json['id_sede'].toString()) ?? 0, // Modificado
       fechaRegistro: json['fecha_registro'] ?? '',
+      estado: json['estado'] ?? 'DISPONIBLE', // Añadido
     );
   }
 
@@ -36,10 +39,10 @@ class Insumo {
     return {
       'nombre_insumo': nombreInsumo,
       'categoria': categoria,
-      'precio': precio,
+      'precio': precio.toString(),
       'medida': medida,
-      'cantidad': cantidad,
-      'id_empresa': idEmpresa,
+      'cantidad': cantidad.toString(),
+      'id_sede': idSede, // Modificado
       'fecha_registro': fechaRegistro,
     };
   }

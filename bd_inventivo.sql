@@ -80,10 +80,10 @@ INSERT INTO `empresas` (`id`, `nombre_empresa`, `nit`, `direccion`, `id_usuario`
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `facturas`
+-- Estructura de tabla para la tabla `remisiones`
 --
 
-CREATE TABLE `facturas` (
+CREATE TABLE `remisiones` (
   `id` int(11) NOT NULL,
   `numero_factura` varchar(50) NOT NULL,
   `id_empresa` int(11) NOT NULL,
@@ -209,9 +209,9 @@ ALTER TABLE `empresas`
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
--- Indices de la tabla `facturas`
+-- Indices de la tabla `remisiones`
 --
-ALTER TABLE `facturas`
+ALTER TABLE `remisiones`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `numero_factura` (`numero_factura`),
   ADD KEY `id_empresa` (`id_empresa`),
@@ -268,9 +268,9 @@ ALTER TABLE `empresas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
--- AUTO_INCREMENT de la tabla `facturas`
+-- AUTO_INCREMENT de la tabla `remisiones`
 --
-ALTER TABLE `facturas`
+ALTER TABLE `remisiones`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -312,7 +312,7 @@ ALTER TABLE `actividades_agricolas`
 -- Filtros para la tabla `detalle_factura`
 --
 ALTER TABLE `detalle_factura`
-  ADD CONSTRAINT `detalle_factura_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `facturas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detalle_factura_ibfk_1` FOREIGN KEY (`id_factura`) REFERENCES `remisiones` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `detalle_factura_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `plantas` (`id`) ON DELETE CASCADE;
 
 --
@@ -322,9 +322,9 @@ ALTER TABLE `empresas`
   ADD CONSTRAINT `empresas_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
 
 --
--- Filtros para la tabla `facturas`
+-- Filtros para la tabla `remisiones`
 --
-ALTER TABLE `facturas`
+ALTER TABLE `remisiones`
   ADD CONSTRAINT `facturas_ibfk_1` FOREIGN KEY (`id_empresa`) REFERENCES `empresas` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `facturas_ibfk_2` FOREIGN KEY (`id_vendedor`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
 

@@ -1,192 +1,120 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:inventivo/services/chatbot_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:inventivo/core/constants/api_config.dart';
 
-class ChatBotScreen extends StatefulWidget {
-  const ChatBotScreen({Key? key}) : super(key: key);
+class ChatbotScreen extends StatefulWidget {
+  const ChatbotScreen({super.key});
 
   @override
-  State<ChatBotScreen> createState() => _ChatBotScreenState();
+  State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
-class _ChatBotScreenState extends State<ChatBotScreen> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> _mensajes = [];
-  bool _enviando = false;
+class _ChatbotScreenState extends State<ChatbotScreen> {
+  final TextEditingController _plantNameController = TextEditingController();
+  // Asumimos un ID de empresa para pruebas, o puedes pedirlo al usuario.
+  // Usaremos el ID de la empresa de prueba (7) como constante de ejemplo.
+  static const int ID_EMPRESA_PRUEBA = 1; 
+  
+  String _responseMessage = 'Hola! Soy InventiBot 🌱. Pregúntame si tenemos alguna planta en stock (ej: Veranera).';
+  bool _isLoading = false;
 
-  Future<void> _enviarMensaje() async {
-    final texto = _controller.text.trim();
-    if (texto.isEmpty) return;
+  Future<void> _searchPlant() async {
+    final plantName = _plantNameController.text.trim();
+
+    if (plantName.isEmpty) {
+      setState(() => _responseMessage = "Por favor, ingresa el nombre de la planta.");
+      return;
+    }
 
     setState(() {
-      _mensajes.add({"sender": "user", "text": texto});
-      _enviando = true;
-    });
-    _controller.clear();
-
-    final respuesta = await ChatbotService.enviarMensaje(texto);
-
-    setState(() {
-      _mensajes.add({"sender": "bot", "text": respuesta});
-      _enviando = false;
+      _isLoading = true;
+      _responseMessage = 'Buscando "$plantName"...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 200));
-    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    try {
+      // Usar la nueva función de ApiConfig para construir la URL de la consulta
+      final url = ApiConfig.chatbotSearch(plantName, ID_EMPRESA_PRUEBA);
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          // Mostrar el mensaje preformateado que viene del backend
+          setState(() => _responseMessage = data['message'] ?? 'Respuesta vacía.');
+        } else {
+          setState(() => _responseMessage = "Error del servidor: ${data['message']}");
+        }
+      } else {
+        setState(() => _responseMessage = "Error HTTP: No se pudo conectar con la API.");
+      }
+    } catch (e) {
+      setState(() => _responseMessage = "Error de conexión inesperado: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9),
       appBar: AppBar(
+        title: const Text("InventiBot - Consulta Pública"),
         backgroundColor: const Color(0xFF2E7D32),
-        elevation: 4,
-        centerTitle: true,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.smart_toy_outlined, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              "Asistente Inventivo 🌿",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // 🤖 Área de Mensajes del Chatbot
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.lightGreen.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    _responseMessage,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _isLoading ? Colors.grey : Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
               ),
+            ),
+            const SizedBox(height: 16),
+            
+            // ⌨️ Área de Entrada
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _plantNameController,
+                    decoration: const InputDecoration(
+                      hintText: "Escribe el nombre de la planta...",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                    ),
+                    onSubmitted: (_) => _searchPlant(), // Permite buscar al presionar Enter
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.search, size: 30, color: Color(0xFF2E7D32)),
+                        onPressed: _searchPlant,
+                      ),
+              ],
             ),
           ],
         ),
-      ),
-      body: Column(
-        children: [
-          // 💬 Lista de mensajes
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/chat_bg.png'),
-                  fit: BoxFit.cover,
-                  opacity: 0.08,
-                ),
-              ),
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                itemCount: _mensajes.length,
-                itemBuilder: (context, index) {
-                  final msg = _mensajes[index];
-                  final esUsuario = msg["sender"] == "user";
-
-                  return Align(
-                    alignment:
-                        esUsuario ? Alignment.centerRight : Alignment.centerLeft,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.75,
-                      ),
-                      decoration: BoxDecoration(
-                        color: esUsuario
-                            ? const Color(0xFF81C784)
-                            : Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(18),
-                          topRight: const Radius.circular(18),
-                          bottomLeft: esUsuario
-                              ? const Radius.circular(18)
-                              : const Radius.circular(4),
-                          bottomRight: esUsuario
-                              ? const Radius.circular(4)
-                              : const Radius.circular(18),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        msg["text"] ?? "",
-                        style: TextStyle(
-                          color: esUsuario ? Colors.white : Colors.black87,
-                          fontSize: 15.5,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          if (_enviando)
-            const Padding(
-              padding: EdgeInsets.all(10),
-              child: CircularProgressIndicator(
-                color: Color(0xFF2E7D32),
-              ),
-            ),
-
-          // ✏️ Campo de entrada inferior
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 6,
-                  offset: Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: "Escribe tu mensaje...",
-                        hintStyle: TextStyle(color: Colors.black38),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        border: InputBorder.none,
-                      ),
-                      onSubmitted: (_) => _enviarMensaje(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: _enviarMensaje,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF2E7D32),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: const Icon(Icons.send, color: Colors.white, size: 22),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
