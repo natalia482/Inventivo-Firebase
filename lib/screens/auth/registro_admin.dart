@@ -23,6 +23,7 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
   final TextEditingController nombreEmpresaController = TextEditingController();
   final TextEditingController nitEmpresaController = TextEditingController();
   final TextEditingController direccionEmpresaController = TextEditingController();
+  final TextEditingController telefonoController = TextEditingController(); // ✅ NUEVO CONTROLADOR
 
   final AuthService _authService = AuthService(); // Usar el servicio
   bool _isLoading = false;
@@ -51,7 +52,8 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
           password: passwordController.text.trim(),
           nombreEmpresa: nombreEmpresaController.text.trim(),
           nit: nitEmpresaController.text.trim(),
-          direccionEmpresa: direccionEmpresaController.text.trim()
+          direccionEmpresa: direccionEmpresaController.text.trim(),
+          telefonos: telefonoController.text.trim() // ✅ ENVIAR DATOS DEL TELÉFONO
       );
 
       if (response["success"] == true) {
@@ -71,6 +73,7 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
         nombreEmpresaController.clear();
         nitEmpresaController.clear();
         direccionEmpresaController.clear();
+        telefonoController.clear(); // ✅ LIMPIAR NUEVO CAMPO
         
         // Regresar al Login
         if (mounted) Navigator.pop(context);
@@ -105,7 +108,7 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              // ... (Campos de texto existentes)
+              // 🏢 Datos de la Empresa y Sede
               TextFormField(
                 controller: nombreEmpresaController,
                 decoration: const InputDecoration(labelText: "Nombre de la empresa"),
@@ -114,22 +117,24 @@ class _RegistroAdminScreenState extends State<RegistroAdminScreen> {
               ),
               const SizedBox(height: 10),
               TextFormField(
-                controller: nitEmpresaController,
-                decoration: const InputDecoration(labelText: "NIT de la empresa"),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty ? "Ingrese el NIT de la empresa" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
                 controller: direccionEmpresaController,
                 decoration: const InputDecoration(labelText: "Dirección (Sede Principal)"),
                 validator: (value) =>
                     value!.isEmpty ? "Ingrese la dirección de la sede principal" : null,
               ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: telefonoController,
+                decoration: const InputDecoration(
+                  labelText: "Teléfonos de la Sede (Separe múltiples números con coma)",
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    value!.isEmpty ? "Ingrese al menos un número de teléfono" : null,
+              ),
               const SizedBox(height: 20),
 
-              // 👤 Datos del administrador
+              // 👤 Datos del propietario
               TextFormField(
                 controller: nombreController,
                 decoration: const InputDecoration(labelText: "Nombre (Propietario)"),

@@ -1,6 +1,6 @@
 class ApiConfig {
 
-  static const String baseUrl = "http://172.18.1.252/inventivo_backend/api";
+  static const String baseUrl = "http://192.168.204.9/inventivo_backend/api";
 
   // AUTENTICACIÓN Y ROLES
   static const String registroPropietario = "$baseUrl/usuarios/registrar_propietario.php"; // Renombrado
@@ -63,4 +63,4 @@ static String listarAuditoria(int idEmpresa) => "$baseUrl/auditoria/listar.php?i
 
 //Chatbot
 static String chatbotSearch(String plantName, int idEmpresa) => 
-      "$baseUrl/public/chatbot_search.php?nombre=${Uri.encodeComponent(plantName)}&id_empresa=$idEmpresa";}
+      "$baseUrl/public/chatbot_search.php?nombre=${Uri.encodeComponent(plantName)}";}

@@ -14,6 +14,7 @@ class AuthService {
     required String nombreEmpresa,
     required String nit,
     required String direccionEmpresa,
+    required String telefonos
     // (Opcional) Puedes añadir latitud/longitud aquí
   }) async {
     final data = {
@@ -24,6 +25,7 @@ class AuthService {
       "nombre_empresa": nombreEmpresa,
       "nit": nit,
       "direccion_empresa": direccionEmpresa,
+      "telefonos": telefonos, 
     };
 
     return await _apiService.postData(ApiConfig.registroPropietario, data);

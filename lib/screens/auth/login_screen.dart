@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/screens/dashboard/admin_dashboar.dart';
+import 'package:inventivo/screens/dashboard/trabajador_dashboard.dart';
 import 'package:inventivo/screens/modulos/chatbot/chatbot_screen.dart';
 import 'package:inventivo/services/auth_service.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
@@ -55,8 +56,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } else {
-        Navigator.pushReplacementNamed(context, '/dashboard_trabajador');
-      }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminDashboard(),
+          ),
+        );      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ ${response['message']}')),
