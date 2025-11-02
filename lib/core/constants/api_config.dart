@@ -1,11 +1,13 @@
 class ApiConfig {
 
-  static const String baseUrl = "http://192.168.204.9/inventivo_backend/api";
+  static const String baseUrl = "http://192.168.101.25/inventivo_backend";
 
   // AUTENTICACIÓN Y ROLES
   static const String registroPropietario = "$baseUrl/usuarios/registrar_propietario.php"; // Renombrado
   static const String login = "$baseUrl/usuarios/login.php";
-  
+  static const String recuperarContrasena = "$baseUrl/usuarios/recuperar_contrasena.php";
+  static const String restablecerContrasena = "$baseUrl/usuarios/restablecer_contrasena.php";
+  static String obtenerSede(int idSede) => "$baseUrl/sede/obtener_sede.php?id_sede=$idSede";
 
   // Registro personal y Obtener personal
   static const String registroPersonal = "$baseUrl/usuarios/trabajador/registro_trabajador.php";

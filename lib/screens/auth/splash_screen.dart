@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
+import 'package:inventivo/screens/auth/home_page.dart';
 import 'package:inventivo/screens/dashboard/admin_dashboar.dart';
-import 'package:inventivo/screens/dashboard/trabajador_dashboard.dart';
-import 'package:inventivo/screens/auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,9 +20,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _verificarSesion() async {
+    final routeName = ModalRoute.of(context)?.settings.name;
+    if (routeName != null && routeName.contains('/reset_password')) {
+      return; 
+    }
+
     await Future.delayed(const Duration(seconds: 2)); // Simula carga
     final usuario = await _session.getUser();
-
+    
     if (!mounted) return;
 
     if (usuario != null) {
@@ -42,14 +46,14 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const TrabajadorDashboard(),
+            builder: (_) => const AdminDashboard(),
           ),
         );
       }
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const HomePage()),
       );
     }
   }

@@ -67,7 +67,7 @@ class _InsumosPageState extends State<InsumosPage> {
     if (user != null && user["id_sede"] != null) {
       idSede = int.tryParse(user["id_sede"].toString()); // Modificado
       idUsuario = int.tryParse(user["id"].toString()); // Para auditoría
-      userRole = user["rol"];      
+      userRole = user["rol"]?.toUpperCase(); // Normalizar el rol
       await listarInsumos();
     } else {
       setState(() => isLoading = false);
@@ -94,8 +94,13 @@ class _InsumosPageState extends State<InsumosPage> {
     }
   }
 
-  void _mostrarPopupActividades() {
-      showDialog(
+ 
+  void _mostrarPopupActividades() async { 
+      // Capturar el filtro actual para refrescar con él
+      final currentFiltro = _searchController.text;
+      
+      // Await la finalización y cierre del diálogo
+      await showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
@@ -109,7 +114,9 @@ class _InsumosPageState extends State<InsumosPage> {
             ),
           );
         },
-      );
+      ); // La ejecución se reanuda cuando el diálogo se cierra
+
+      listarInsumos(filtro: currentFiltro);
     }
 
 // FUNCIONALIDAD ELIMINAR PERMANENTE
@@ -341,20 +348,6 @@ class _InsumosPageState extends State<InsumosPage> {
                       });
                     },
                   ),
-                  // Dropdown para el ESTADO
-                  DropdownButtonFormField<String>(
-                    value: estadoEdit,
-                    decoration: const InputDecoration(labelText: "Estado"),
-                    items: const [
-                      DropdownMenuItem(value: "DISPONIBLE", child: Text("DISPONIBLE")),
-                      DropdownMenuItem(value: "NO DISPONIBLE", child: Text("NO DISPONIBLE")),
-                    ],
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        estadoEdit = value;
-                      });
-                    },
-                  ),
                   _buildInput(cantidadCtrl, "Cantidad", type: TextInputType.number),
                   _buildInput(precioCtrl, "Precio de compra", type: TextInputType.number),
                   _buildInput(cantidadCtrl, "Cantidad", type: TextInputType.number),
@@ -415,7 +408,9 @@ class _InsumosPageState extends State<InsumosPage> {
 
   @override
   Widget build(BuildContext context) {
-final bool isAdmin = userRole == 'ADMINISTRADOR' || userRole == 'PROPIETARIO';
+    final bool canCreateEdit = userRole == 'PROPIETARIO' || userRole == 'ADMINISTRADOR' || userRole == 'TRABAJADOR'; 
+    final bool canDelete = userRole == 'PROPIETARIO' || userRole == 'ADMINISTRADOR'; 
+    
     return Scaffold(
       backgroundColor: const Color(0xFFEFF7EE),
       appBar: AppBar(
@@ -423,15 +418,15 @@ final bool isAdmin = userRole == 'ADMINISTRADOR' || userRole == 'PROPIETARIO';
             style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF2E7D32),
         actions: [
-          // Botón "Lista de actividades" (Visible para todos)
+          // Botón "Lista de actividades" (TRABAJADOR SI ve)
           TextButton.icon(
             onPressed: _mostrarPopupActividades,
             icon: const Icon(Icons.history, color: Colors.white),
             label: const Text("Lista de actividades",
                 style: TextStyle(color: Colors.white)),
           ),
-          // Botón "Registrar insumo" (SOLO ADMIN)
-          if (isAdmin) 
+          // Botón "Registrar insumo" (TRABAJADOR SI ve)
+          if (canCreateEdit) 
             TextButton.icon(
               onPressed: _mostrarPopupRegistro,
               icon: const Icon(Icons.add_circle_outline, color: Colors.white),
@@ -524,21 +519,22 @@ final bool isAdmin = userRole == 'ADMINISTRADOR' || userRole == 'PROPIETARIO';
                                             ],
                                           ),
                                         ),
-                                        // Botones de acción (SOLO ADMIN)
-                                        trailing: isAdmin
+                                        // ✅ PERMISO: El trabajador ve EDITAR, pero no ve ELIMINAR
+                                        trailing: canCreateEdit
                                             ? Wrap( 
                                                 spacing: 4,
                                                 children: [
-                                                  // Botón EDITAR
+                                                  // Botón EDITAR (TRABAJADOR SI ve)
                                                   IconButton(
                                                     icon: const Icon(Icons.edit, color: Colors.blueAccent),
                                                     onPressed: () => _editarInsumo(insumo),
                                                   ),
-                                                  // Botón ELIMINAR
-                                                  IconButton(
-                                                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                                                    onPressed: () => eliminarInsumo(insumo["id"]),
-                                                  ),
+                                                  // Botón ELIMINAR (TRABAJADOR NO ve)
+                                                  if (canDelete)
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                                                      onPressed: () => eliminarInsumo(insumo["id"]),
+                                                    ),
                                                 ],
                                               )
                                             : null,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
+import 'package:inventivo/screens/auth/login_screen.dart';
 
 class LogoutButton extends StatelessWidget {
-  const LogoutButton({super.key});
+  const LogoutButton({super.key, required bool isSidebar});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +15,9 @@ class LogoutButton extends StatelessWidget {
       tooltip: 'Cerrar sesión',
       onPressed: () async {
         await session.logout();
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.push(context, MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ));
       },
     );
   }

@@ -31,11 +31,11 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
 
   Future<void> cargarActividades() async {
     if (idSede == null) {
-      setState(() => isLoading = false);
+      if(mounted) setState(() => isLoading = false);
       return;
     }
 
-    setState(() => isLoading = true);
+    if(mounted) setState(() => isLoading = true);
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.listarUsoInsumos),
@@ -46,18 +46,20 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          setState(() {
-            actividades = data['data'] ?? [];
-            isLoading = false;
-          });
+          if(mounted) {
+            setState(() {
+              actividades = data['data'] ?? [];
+              isLoading = false;
+            });
+          }
         } else {
-          setState(() => isLoading = false);
+          if(mounted) setState(() => isLoading = false);
         }
       } else {
-        setState(() => isLoading = false);
+        if(mounted) setState(() => isLoading = false);
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      if(mounted) setState(() => isLoading = false);
     }
   }
 
@@ -65,7 +67,7 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
      if (idSede == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("⚠️ No se ha cargado la información de la sede aún. Intenta nuevamente."),
+          content: Text(" No se ha cargado la información de la sede aún. Intenta nuevamente."),
           backgroundColor: Colors.orange,
         ),
       );
@@ -143,13 +145,13 @@ class _HistorialUsoInsumosPageState extends State<HistorialUsoInsumosPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text("📅 $fecha"),
-                                  Text("👤 $responsable"),
+                                  Text(" $fecha"),
+                                  Text(" $responsable"),
                                 ],
                               ),
                               const Divider(height: 15),
-                              Text("💧 Cantidad utilizada: $cantidad"),
-                              Text("🎯 Objetivo: $objetivo"),
+                              Text(" Cantidad utilizada: $cantidad"),
+                              Text(" Objetivo: $objetivo"),
                             ],
                           ),
                         ),
@@ -193,11 +195,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
   
   List<dynamic> personalEmpresa = []; 
   
-  // ✅ CORRECCIÓN: Usar el ID (int) para el control del dropdown
   int? selectedResponsableId; 
-  // (Opcional: guardar el nombre para enviarlo a la API si la API lo requiere)
-  String? selectedResponsableNombre;
-  
   String? selectedInsumo;
   String? medida;
   String? objetivo;
@@ -219,26 +217,18 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
       final session = SessionManager();
       final user = await session.getUser();
 
-      final response = await http.get(
+      // Usamos obtenerPersonal de ApiConfig que filtra por sede y excluye propietario
+      final response = await http.get( 
         Uri.parse(ApiConfig.obtenerPersonal(idSede)), 
       );
       
       final data = jsonDecode(response.body);
       if (data['status'] == 'success') { 
-        print("Usuarios recibidos: ${response.body}");
-        setState(() => personalEmpresa = data['data']);
-        
-        final currentUser = personalEmpresa.firstWhere(
-          (p) => p['id'].toString() == user?['id'].toString(),
-          orElse: () => null,
-        );
-        if (currentUser != null) {
-          setState(() {
-            // Guardar tanto el ID (para el dropdown) como el Nombre (para la API)
-            selectedResponsableId = currentUser['id'] as int?;
-            selectedResponsableNombre = currentUser['nombre_completo'] as String?;
-          });
+        if (mounted) {
+          setState(() => personalEmpresa = data['data']);
         }
+        
+        // No necesitamos buscar el usuario actual aquí, solo cargamos la lista
       }
     } catch (e) {
       debugPrint("Error al cargar personal de la empresa: $e");
@@ -254,7 +244,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
 
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
-        setState(() => insumos = data['data']);
+        if(mounted) setState(() => insumos = data['data']);
       }
     } catch (e) {
       debugPrint("Error al cargar insumos: $e");
@@ -263,7 +253,7 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
 
   Future<void> registrarActividad() async {
     if (!_formKey.currentState!.validate()) return;
-    if (selectedInsumo == null || selectedResponsableId == null) { // Verificar ID
+    if (selectedInsumo == null || selectedResponsableId == null) { 
        ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Complete todos los campos.")));
       return;
@@ -276,7 +266,11 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
 
     // Validación de stock
     final cantidadNumerica = double.tryParse(_cantidadCtrl.text) ?? 0.0;
-    final stockDisponible = double.tryParse(_medidaCtrl.text) ?? 0.0;
+    
+    // Obtenemos el stock disponible de la lista local
+    final insumoSeleccionado = insumos.firstWhere((i) => i['nombre_insumo'] == selectedInsumo, orElse: () => null);
+    final stockDisponible = double.tryParse(insumoSeleccionado?['cantidad']?.toString() ?? '0') ?? 0.0;
+
 
     if (cantidadNumerica <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -290,13 +284,8 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
       return;
     }
 
-    setState(() => isLoading = true);
+    if(mounted) setState(() => isLoading = true);
     
-    // (Asegurarse de que el nombre del responsable esté actualizado antes de enviar)
-    if(selectedResponsableNombre == null && selectedResponsableId != null) {
-       final personal = personalEmpresa.firstWhere((p) => p['id'] == selectedResponsableId);
-       selectedResponsableNombre = personal['nombre_completo'];
-    }
 
     try {
       final insumo =
@@ -311,39 +300,46 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
           "cantidad_utilizada": _cantidadCtrl.text, 
           "objetivo":
               objetivo == "Otro" ? _otroObjetivoCtrl.text : objetivo,
-          "responsable": selectedResponsableNombre, // Enviar el Nombre (String)
+          "responsable": selectedResponsableId, // 
           "id_sede": widget.idSede
         }),
       );
 
       final data = jsonDecode(response.body);
-      setState(() => isLoading = false);
+      
+      if (mounted) setState(() => isLoading = false);
 
       if (data['success'] == true) {
-        Navigator.pop(context);
-        widget.onRegistrada();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("✅ Actividad registrada y stock actualizado"),
-          ),
-        );
+        if(mounted) {
+          Navigator.pop(context);
+          widget.onRegistrada();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Actividad registrada y stock actualizado"),
+            ),
+          );
+        }
       } else {
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  " Error: ${data['message'] ?? 'Error al registrar actividad'}"),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if(mounted) setState(() => isLoading = false);
+      if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                " Error: ${data['message'] ?? 'Error al registrar actividad'}"),
+            content: Text("Error al registrar la actividad: $e"),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
-    } catch (e) {
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error al registrar la actividad."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
     }
   }
 
@@ -461,26 +457,18 @@ class _RegistrarActividadPopupState extends State<RegistrarActividadPopup> {
                 items: personalEmpresa.map<DropdownMenuItem<int>>((p) { 
                 final int id = p['id'] as int; 
                 final String nombre = p['nombre'] ?? '';
-                final String rol = p['rol'] ?? '';
+                final String apellido = p['apellido'] ?? ''; 
                 return DropdownMenuItem<int>( 
                   value: id, 
-                  child: Text("$nombre ${rol.isNotEmpty ? '($rol)' : ''}"),
+                  child: Text("$nombre $apellido"), // Mostramos Nombre Apellido
                 );
               }).toList(),
                 onChanged: (val) {
-                  setState(() {
-                     selectedResponsableId = val;
-                     // Guardar el nombre que se enviará a la API
-                     if (val != null) {
-                       final personalSeleccionado = personalEmpresa.firstWhere(
-                         (p) => p['id'] == val,
-                         orElse: () => null
-                       );
-                       if (personalSeleccionado != null) {
-                         selectedResponsableNombre = personalSeleccionado['nombre'] ?? 'sin nombre';
-                       }
-                     }
-                  });
+                  if (mounted) {
+                    setState(() {
+                      selectedResponsableId = val;
+                    });
+                  }
                 },
                 validator: (v) => v == null ? "Campo obligatorio" : null,
               ),

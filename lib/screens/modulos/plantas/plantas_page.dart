@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:inventivo/core/constants/api_config.dart';
 import 'package:inventivo/core/utils/session_manager.dart';
 import 'package:inventivo/services/planta_service.dart';
-import 'package:inventivo/screens/modulos/remision/remision_screen.dart'; // Asegúrate de renombrar esto
+import 'package:inventivo/screens/modulos/remision/remision_screen.dart'; 
+import 'dart:async'; // Necesario para Debouncing (aunque no esté implementado en este snippet)
 
 class PlantasPage extends StatefulWidget {
   const PlantasPage({Key? key}) : super(key: key);
@@ -18,11 +19,14 @@ class _PlantasPageState extends State<PlantasPage> {
   List<Planta> plantas = [];
   bool isLoading = true;
   String filtro = '';
-  
-  int? idSede; // Modificado
-  int? idVendedor; // (Usuario logueado)
+  int? idSede; 
+  int? idVendedor; 
   String? userRole;
   int? idUsuario;
+  String nombreEmpresa = 'Cargando...'; 
+  String direccionSede = 'Cargando...';
+  String telefonoSede = 'N/A';
+  bool isCompanyInfoLoaded = false; 
 
   @override
   void initState() {
@@ -30,20 +34,50 @@ class _PlantasPageState extends State<PlantasPage> {
     _cargarDatos();
   }
 
+  //Obtener la información de la Sede/Empresa
+  Future<void> _fetchCompanyInfo(int idSede) async {
+    try {
+      final url = ApiConfig.obtenerSede(idSede);
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final info = data['data'];
+          setState(() {
+            nombreEmpresa = info['nombre_empresa'] ?? 'Empresa Desconocida';
+            direccionSede = info['direccion'] ?? 'Dirección No Especificada';
+            telefonoSede = info['telefonos'] ?? 'N/A';
+            isCompanyInfoLoaded = true;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error al obtener info de la sede: $e");
+    }
+    
+    // Fallback en caso de error de conexión o API
+    setState(() {
+      isCompanyInfoLoaded = true;
+    });
+  }
+
+
   Future<void> _cargarDatos() async {
     final session = SessionManager();
     final user = await session.getUser();
     
     idSede = int.tryParse(user?["id_sede"]?.toString() ?? '0');
     idVendedor = int.tryParse(user?["id"]?.toString() ?? '0');
-    idUsuario = int.tryParse(user?["id"]?.toString() ?? '0'); // ✅ Obtener ID de Usuario
+    idUsuario = int.tryParse(user?["id"]?.toString() ?? '0'); // Obtener ID de Usuario
     userRole = user?["rol"];
     
     if (idSede != null && idSede! > 0) {
+      await _fetchCompanyInfo(idSede!);
       await obtenerPlantas(filtro: filtro);
     } else {
       setState(() => isLoading = false);
-      // Mostrar error si no hay sede
     }
   }
 
@@ -57,16 +91,15 @@ class _PlantasPageState extends State<PlantasPage> {
     });
   }
 
- void _mostrarPopupRemisiones() {
-    if (idSede == null || idVendedor == null || idVendedor == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text("Error: Datos de empresa o vendedor no disponibles.")),
-      );
-      return;
-    }
-
+  void _mostrarPopupRemisiones() {
+    if (!isCompanyInfoLoaded || idSede == null || idVendedor == null || idVendedor == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content:
+                    Text("Cargando datos de la empresa, intente nuevamente en un momento.")),
+        );
+        return;
+    } 
     showDialog(
       context: context,
       builder: (context) {
@@ -80,6 +113,10 @@ class _PlantasPageState extends State<PlantasPage> {
             child: RemisionesScreen(
               idSede: idSede!,
               idVendedor: idVendedor!,
+              userRole: userRole,
+              nombreEmpresa: nombreEmpresa, 
+              direccionSede: direccionSede,
+              telefonoSede: telefonoSede
             ),
           ),
         );
@@ -272,14 +309,14 @@ class _PlantasPageState extends State<PlantasPage> {
     );
   }
 
-  Future<void> eliminarPlanta(int id) async { // Cambiamos el retorno a void
+  Future<void> eliminarPlanta(int id) async { 
       // 1. Confirmación
       bool? confirmar = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text("Eliminar planta"),
           content: const Text(
-              "⚠️ ¿Estás seguro de ELIMINAR PERMANENTEMENTE esta planta? Esta acción es irreversible."),
+              "¿Estás seguro de ELIMINAR PERMANENTEMENTE esta planta? Esta acción es irreversible."),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -293,8 +330,6 @@ class _PlantasPageState extends State<PlantasPage> {
       );
 
       if (confirmar == true) {
-        // 2. Ejecutar eliminación con IDs de auditoría
-        // Aseguramos que los IDs no sean nulos (ya están chequeados en _cargarDatos)
         if (idUsuario == null || idSede == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Error: Faltan datos de sesión para auditar.")),
@@ -304,17 +339,16 @@ class _PlantasPageState extends State<PlantasPage> {
         
         final ok = await _plantaService.eliminarPlanta(id, idUsuario!, idSede!);
         
-        // 3. Manejar resultado
         if (ok) {
           _cargarDatos(); // Recargar la lista
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text("✅ Planta eliminada correctamente")),
+                content: Text(" Planta eliminada correctamente")),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text("❌ Error al eliminar la planta")),
+                content: Text(" Error al eliminar la planta")),
           );
         }
       }
@@ -331,36 +365,42 @@ class _PlantasPageState extends State<PlantasPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool canModify = userRole == 'PROPIETARIO' || userRole == 'ADMINISTRADOR';
+    // ✅ 1. Permiso para Agregar/Editar (Incluye TRABAJADOR)
+    final bool canModify = userRole == 'PROPIETARIO' || userRole == 'ADMINISTRADOR' || userRole == 'TRABAJADOR';
+    
+    // ✅ 2. Permiso EXCLUSIVO para Eliminar (Excluye TRABAJADOR)
+    final bool canDelete = userRole == 'PROPIETARIO' || userRole == 'ADMINISTRADOR';
+    
     final bool datosListos = idSede != null && idVendedor != null && idVendedor != 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Gestión de Plantas"),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: const Color.fromARGB(255, 255, 255, 255),
         actions: [
           // Botón "Lista Remisiones"
           TextButton.icon(
             onPressed: datosListos ? _mostrarPopupRemisiones : null,
-            icon: const Icon(Icons.receipt_long, color: Color.fromARGB(255, 48, 105, 58)),
+            icon: const Icon(Icons.receipt_long, color: Color.fromARGB(255, 255, 255, 255)),
             label: const Text(
               "Lista Remisiones",
               style: TextStyle(
-                  color: Color.fromARGB(255, 62, 153, 89),
+                  color: Color.fromARGB(255, 255, 255, 255),
                   fontWeight: FontWeight.bold),
             ),
           ),
           
-          // Botón "Agregar planta" (Solo Admin/Propietario)
+          // Botón "Agregar planta" (Visible si canModify es true)
           if (canModify)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: TextButton.icon(
-                icon: const Icon(Icons.add, color: Color.fromARGB(255, 48, 105, 58)),
+                icon: const Icon(Icons.add, color: Color.fromARGB(255, 255, 255, 255)),
                 label: const Text(
                   "Agregar planta ",
                   style: TextStyle(
-                      color: Color.fromARGB(255, 62, 153, 89),
+                      color: Color.fromARGB(255, 255, 255, 255),
                       fontWeight: FontWeight.bold),
                 ),
                 onPressed: () => _mostrarDialogoPlanta(),
@@ -414,19 +454,24 @@ class _PlantasPageState extends State<PlantasPage> {
                                         color: stockInfo["color"])),
                               ],
                             ),
-                            // Botones de acción (Solo Admin/Propietario)
+                            // Botones de acción (Controlado por canModify)
                             trailing: canModify ? Wrap(
                               children: [
+                                // Botón EDITAR (Visible si canModify es true)
                                 IconButton(
                                   icon: const Icon(Icons.edit, color: Colors.blue),
                                   onPressed: () => _mostrarDialogoPlanta(planta: p),
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                                  tooltip: "Eliminar planta",
-                                  onPressed: () async { await eliminarPlanta(p.id!); },                                ),
+                                
+                                // ✅ Botón ELIMINAR (Solo visible si canDelete es true)
+                                if (canDelete)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                                    tooltip: "Eliminar planta",
+                                    onPressed: () async { await eliminarPlanta(p.id!); }, 
+                                  ),
                               ],
-                            ) : null, // No mostrar nada si es Trabajador
+                            ) : null,
                           ),
                         );
                       },

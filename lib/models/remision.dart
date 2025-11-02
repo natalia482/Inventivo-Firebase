@@ -5,16 +5,20 @@ class Remision {
   final int idVendedor;
   final String? fechaEmision;
   final double total;
+  final String? nombreCliente; 
+  final String? telefonoCliente;
   final List<DetalleRemision> detalles;
 
   Remision({
     this.id,
     required this.numeroFactura,
-    required this.idSede, // Modificado
+    required this.idSede, 
     required this.idVendedor,
     this.fechaEmision,
     required this.total,
     required this.detalles,
+    required this.nombreCliente, 
+    required this.telefonoCliente,
   });
 
   factory Remision.fromJson(Map<String, dynamic> json) {
@@ -24,6 +28,8 @@ class Remision {
       idSede: int.tryParse(json['id_sede']?.toString() ?? '0') ?? 0,
       idVendedor: int.tryParse(json['id_vendedor']?.toString() ?? '0') ?? 0,
       fechaEmision: json['fecha_emision']?.toString(), 
+      nombreCliente: json['nombre_cliente']?.toString(),
+      telefonoCliente: json['telefono_cliente']?.toString(),
       total: double.tryParse(json['total']?.toString() ?? '0') ?? 0.0,
       detalles: [],
     );
@@ -35,6 +41,8 @@ class Remision {
       'id_sede': idSede, // Modificado
       'id_vendedor': idVendedor,
       'total': total,
+      "nombre_cliente": nombreCliente, 
+      "telefono_cliente": telefonoCliente,
       'detalles': detalles.map((d) => d.toJson()).toList(),
     };
   }

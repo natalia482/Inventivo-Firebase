@@ -12,7 +12,6 @@ class AuthService {
     required String correo,
     required String password,
     required String nombreEmpresa,
-    required String nit,
     required String direccionEmpresa,
     required String telefonos
     // (Opcional) Puedes añadir latitud/longitud aquí
@@ -23,7 +22,6 @@ class AuthService {
       "correo": correo,
       "password": password,
       "nombre_empresa": nombreEmpresa,
-      "nit": nit,
       "direccion_empresa": direccionEmpresa,
       "telefonos": telefonos, 
     };
@@ -74,4 +72,22 @@ class AuthService {
       };
     }
   }
+
+  Future<Map<String, dynamic>> sendRecoveryEmail({required String correo}) async {
+    final data = {"correo": correo};
+    return await _apiService.postData(ApiConfig.recuperarContrasena, data);
+  }
+
+  // Restablecer Contraseña usando Token
+    Future<Map<String, dynamic>> resetPassword({
+        required String token,
+        required String newPassword,
+    }) async {
+        final data = {
+            "token": token,
+            "password": newPassword,
+        };
+        // Debes definir esta ruta en ApiConfig si aún no lo has hecho
+        return await _apiService.postData(ApiConfig.restablecerContrasena, data);
+    }
 }
