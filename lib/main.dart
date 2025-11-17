@@ -3,8 +3,7 @@ import 'package:inventivo/screens/auth/home_page.dart';
 import 'package:inventivo/screens/auth/splash_screen.dart';
 import 'package:inventivo/screens/auth/login_screen.dart';
 import 'package:inventivo/screens/auth/registro_admin.dart';
-import 'package:inventivo/screens/auth/reset_password_screen.dart'; // ✅ Importar ResetPasswordScreen
-
+import 'package:inventivo/screens/auth/reset_password_screen.dart'; 
 void main() {
   runApp(const InventivoApp());
 }
@@ -29,7 +28,6 @@ class InventivoApp extends StatelessWidget {
         // No definimos /reset_password aquí, lo manejamos en onGenerateRoute
       },
 
-      // ✅ NUEVO: onGenerateRoute para manejar rutas dinámicas como Deep Links
       onGenerateRoute: (settings) {
         // Intercepta la ruta /reset_password
         if (settings.name?.startsWith('/reset_password') ?? false) {

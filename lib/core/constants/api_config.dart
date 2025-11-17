@@ -1,6 +1,6 @@
 class ApiConfig {
 
-  static const String baseUrl = "http://192.168.101.25/inventivo_backend";
+  static const String baseUrl = "https://magenta-raven-531109.hostingersite.com/api_inventivo";
 
   // AUTENTICACIÓN Y ROLES
   static const String registroPropietario = "$baseUrl/usuarios/registrar_propietario.php"; // Renombrado
@@ -16,7 +16,7 @@ class ApiConfig {
     String url = "$baseUrl/usuarios/trabajador/obtener_trabajadores.php?id_sede=$idSede";
     if (filtro != null && filtro.isNotEmpty) {
       url += "&filtro=$filtro"; 
-    }
+    } 
     return url;
   }
   static const String cambiarEstado = "$baseUrl/usuarios/trabajador/cambiar_estado.php";

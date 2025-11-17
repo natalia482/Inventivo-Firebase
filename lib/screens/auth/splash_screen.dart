@@ -16,47 +16,48 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _verificarSesion();
+
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _verificarSesion();
+    });
   }
 
-  Future<void> _verificarSesion() async {
-    final routeName = ModalRoute.of(context)?.settings.name;
-    if (routeName != null && routeName.contains('/reset_password')) {
-      return; 
-    }
+Future<void> _verificarSesion() async {
+  // Obtener la ruta REAL del navegador en Flutter Web
+  final fragment = Uri.base.fragment; // Ej: "/reset_password_screen?token=XYZ"
 
-    await Future.delayed(const Duration(seconds: 2)); // Simula carga
-    final usuario = await _session.getUser();
-    
-    if (!mounted) return;
+  // Si estamos en reset_password, NO redirigir
+  if (fragment.startsWith('/reset_password_screen')) {
+    return;
+  }
 
-    if (usuario != null) {
-      final rol = usuario['rol'];
-      // id_empresa (para el dashboard) y id_sede (para filtrar) están en la sesión
-      final idSede = int.tryParse(usuario['id_empresa'].toString()) ?? 0;
+  await Future.delayed(const Duration(seconds: 2)); // Simula carga
 
-      if (rol == 'PROPIETARIO' || rol == 'ADMINISTRADOR') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AdminDashboard(),
-          ),
-        );
-      } else { // Asumimos que es TRABAJADOR
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const AdminDashboard(),
-          ),
-        );
-      }
+  final usuario = await _session.getUser();
+  if (!mounted) return;
+
+  if (usuario != null) {
+    final rol = usuario['rol'];
+
+    if (rol == 'PROPIETARIO' || rol == 'ADMINISTRADOR') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => AdminDashboard()),
+      );
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
       );
     }
+  } else {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

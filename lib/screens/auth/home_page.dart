@@ -34,7 +34,7 @@ class HomePage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset(
-                        'images/Logo.png',
+                        'images/logo.png',
                         height: 200,
                       ),
                       const SizedBox(height: 1,),
